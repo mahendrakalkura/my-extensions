@@ -33,26 +33,28 @@
     // Remove highlight before capturing
     elementToCapture.classList.remove('div-screenshot-highlight');
 
-    try {
-      // Capture the element
-      const canvas = await html2canvas(elementToCapture, {
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: null,
-        logging: false
-      });
+    // Get element bounds
+    const rect = elementToCapture.getBoundingClientRect();
+    const bounds = {
+      x: rect.left + window.scrollX,
+      y: rect.top + window.scrollY,
+      width: rect.width,
+      height: rect.height
+    };
 
-      // Convert to blob and download
-      canvas.toBlob((blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        a.href = url;
-        a.download = `screenshot-${timestamp}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+    try {
+      // Send message to background script to capture
+      chrome.runtime.sendMessage({
+        action: 'captureElement',
+        bounds: bounds,
+        devicePixelRatio: window.devicePixelRatio
+      }, (response) => {
+        if (response && response.success) {
+          console.log('Screenshot saved successfully');
+        } else {
+          console.error('Screenshot failed:', response?.error);
+          alert('Screenshot failed: ' + (response?.error || 'Unknown error'));
+        }
       });
 
     } catch (error) {
