@@ -5,7 +5,8 @@
   "description": "Click to select and screenshot any div on a webpage",
   "permissions": [
     "activeTab",
-    "scripting"
+    "scripting",
+    "contextMenus"
   ],
   "action": {
     "default_title": "Screenshot a div"

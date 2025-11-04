@@ -1,13 +1,34 @@
-// Activate selection mode when extension icon is clicked
-chrome.action.onClicked.addListener((tab) => {
+// Create context menu on install
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({
+    id: 'screenshot-element',
+    title: 'Take screenshot',
+    contexts: ['all']
+  });
+});
+
+// Function to activate screenshot mode
+function activateScreenshotMode(tabId) {
   chrome.scripting.executeScript({
-    target: { tabId: tab.id },
+    target: { tabId: tabId },
     files: ['content.js']
   });
   chrome.scripting.insertCSS({
-    target: { tabId: tab.id },
+    target: { tabId: tabId },
     files: ['content.css']
   });
+}
+
+// Activate selection mode when extension icon is clicked
+chrome.action.onClicked.addListener((tab) => {
+  activateScreenshotMode(tab.id);
+});
+
+// Activate selection mode when context menu is clicked
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === 'screenshot-element') {
+    activateScreenshotMode(tab.id);
+  }
 });
 
 // Listen for screenshot requests from content script

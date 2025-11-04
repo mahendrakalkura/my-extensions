@@ -33,8 +33,29 @@
     // Remove highlight before capturing
     elementToCapture.classList.remove('div-screenshot-highlight');
 
-    // Get element bounds relative to viewport
+    // Remove all highlights from document
+    document.querySelectorAll('.div-screenshot-highlight').forEach(el => {
+      el.classList.remove('div-screenshot-highlight');
+    });
+
+    // Scroll element fully into view if needed
+    elementToCapture.scrollIntoView({
+      behavior: 'instant',
+      block: 'nearest',
+      inline: 'nearest'
+    });
+
+    // Wait for next frame to ensure:
+    // 1. Highlight styles are fully removed
+    // 2. Scroll has completed
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    await new Promise(resolve => requestAnimationFrame(resolve));
+
+    // Get element bounds relative to viewport AFTER scrolling
     const rect = elementToCapture.getBoundingClientRect();
+
+    // Generate descriptive filename
+    const filename = generateFilename(elementToCapture);
 
     try {
       // Request full tab screenshot from background
@@ -47,7 +68,7 @@
         }
 
         // Now crop the image in the content script (not service worker)
-        cropAndDownload(response.dataUrl, rect);
+        cropAndDownload(response.dataUrl, rect, filename);
       });
 
     } catch (error) {
@@ -57,15 +78,33 @@
     }
   }
 
+  // Generate descriptive filename based on element
+  function generateFilename(element) {
+    const tag = element.tagName.toLowerCase();
+    const id = element.id ? `-${element.id}` : '';
+    const className = element.className && typeof element.className === 'string'
+      ? `-${element.className.split(' ').filter(c => c && !c.startsWith('div-screenshot')).join('-')}`
+      : '';
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+    // Clean up filename (remove invalid characters)
+    const cleanName = `screenshot-${tag}${id}${className}-${timestamp}`
+      .replace(/[^a-z0-9\-_.]/gi, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    return `${cleanName}.png`;
+  }
+
   // Crop the screenshot and download it
-  function cropAndDownload(dataUrl, rect) {
+  function cropAndDownload(dataUrl, rect, filename) {
     const img = new Image();
 
     img.onload = () => {
       try {
         // Create canvas for cropping
         const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { alpha: true }); // Preserve transparency
         const scale = window.devicePixelRatio || 1;
 
         // Set canvas size to element size
@@ -81,14 +120,13 @@
           rect.width * scale, rect.height * scale        // Destination width, height
         );
 
-        // Convert to blob and download
+        // Convert to blob and download (PNG preserves transparency)
         canvas.toBlob((blob) => {
           const url = URL.createObjectURL(blob);
-          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
           const a = document.createElement('a');
           a.href = url;
-          a.download = `screenshot-${timestamp}.png`;
+          a.download = filename;
           a.style.display = 'none';
           document.body.appendChild(a);
           a.click();
@@ -100,7 +138,7 @@
           }, 100);
 
           console.log('Screenshot saved successfully');
-        }, 'image/png');
+        }, 'image/png'); // PNG format preserves transparency
 
       } catch (error) {
         console.error('Cropping failed:', error);
