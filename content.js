@@ -33,37 +33,90 @@
     // Remove highlight before capturing
     elementToCapture.classList.remove('div-screenshot-highlight');
 
-    // Get element bounds
+    // Get element bounds relative to viewport
     const rect = elementToCapture.getBoundingClientRect();
-    const bounds = {
-      x: rect.left + window.scrollX,
-      y: rect.top + window.scrollY,
-      width: rect.width,
-      height: rect.height
-    };
 
     try {
-      // Send message to background script to capture
-      chrome.runtime.sendMessage({
-        action: 'captureElement',
-        bounds: bounds,
-        devicePixelRatio: window.devicePixelRatio
-      }, (response) => {
-        if (response && response.success) {
-          console.log('Screenshot saved successfully');
-        } else {
+      // Request full tab screenshot from background
+      chrome.runtime.sendMessage({ action: 'captureTab' }, (response) => {
+        if (!response || !response.success) {
           console.error('Screenshot failed:', response?.error);
           alert('Screenshot failed: ' + (response?.error || 'Unknown error'));
+          cleanup();
+          return;
         }
+
+        // Now crop the image in the content script (not service worker)
+        cropAndDownload(response.dataUrl, rect);
       });
 
     } catch (error) {
       console.error('Screenshot failed:', error);
       alert('Screenshot failed. Please try again.');
+      cleanup();
     }
+  }
 
-    // Cleanup
-    cleanup();
+  // Crop the screenshot and download it
+  function cropAndDownload(dataUrl, rect) {
+    const img = new Image();
+
+    img.onload = () => {
+      try {
+        // Create canvas for cropping
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const scale = window.devicePixelRatio || 1;
+
+        // Set canvas size to element size
+        canvas.width = rect.width * scale;
+        canvas.height = rect.height * scale;
+
+        // Draw the cropped portion
+        ctx.drawImage(
+          img,
+          rect.left * scale, rect.top * scale,           // Source x, y
+          rect.width * scale, rect.height * scale,       // Source width, height
+          0, 0,                                           // Destination x, y
+          rect.width * scale, rect.height * scale        // Destination width, height
+        );
+
+        // Convert to blob and download
+        canvas.toBlob((blob) => {
+          const url = URL.createObjectURL(blob);
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `screenshot-${timestamp}.png`;
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+
+          // Cleanup
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }, 100);
+
+          console.log('Screenshot saved successfully');
+        }, 'image/png');
+
+      } catch (error) {
+        console.error('Cropping failed:', error);
+        alert('Screenshot cropping failed: ' + error.message);
+      } finally {
+        cleanup();
+      }
+    };
+
+    img.onerror = () => {
+      console.error('Failed to load captured image');
+      alert('Failed to load captured image');
+      cleanup();
+    };
+
+    img.src = dataUrl;
   }
 
   // Cancel on ESC key
