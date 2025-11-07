@@ -143,110 +143,11 @@
     img.src = dataUrl;
   }
 
-  // Display screenshot in a modal overlay
+  // Display screenshot in a new tab as blob
   function displayScreenshot(blobUrl, filename) {
-    // Create overlay
-    const overlay = document.createElement('div');
-    overlay.id = 'screenshot-overlay';
-    overlay.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.9);
-      z-index: 2147483647;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 20px;
-    `;
-
-    // Create image
-    const screenshotImg = document.createElement('img');
-    screenshotImg.src = blobUrl;
-    screenshotImg.style.cssText = `
-      max-width: 90%;
-      max-height: 80%;
-      object-fit: contain;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-    `;
-
-    // Create buttons container
-    const buttonsContainer = document.createElement('div');
-    buttonsContainer.style.cssText = `
-      display: flex;
-      gap: 10px;
-    `;
-
-    // Create download button
-    const downloadBtn = document.createElement('button');
-    downloadBtn.textContent = 'Download';
-    downloadBtn.style.cssText = `
-      background: #4285f4;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 4px;
-      font-family: Arial, sans-serif;
-      font-size: 14px;
-      cursor: pointer;
-      font-weight: 500;
-    `;
-    downloadBtn.onmouseover = () => downloadBtn.style.background = '#3367d6';
-    downloadBtn.onmouseout = () => downloadBtn.style.background = '#4285f4';
-    downloadBtn.onclick = () => {
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = filename;
-      a.click();
-    };
-
-    // Create close button
-    const closeBtn = document.createElement('button');
-    closeBtn.textContent = 'Close';
-    closeBtn.style.cssText = `
-      background: #5f6368;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 4px;
-      font-family: Arial, sans-serif;
-      font-size: 14px;
-      cursor: pointer;
-      font-weight: 500;
-    `;
-    closeBtn.onmouseover = () => closeBtn.style.background = '#4a4d50';
-    closeBtn.onmouseout = () => closeBtn.style.background = '#5f6368';
-    closeBtn.onclick = () => {
-      document.body.removeChild(overlay);
-      URL.revokeObjectURL(blobUrl);
-      cleanup();
-    };
-
-    // Assemble the overlay
-    buttonsContainer.appendChild(downloadBtn);
-    buttonsContainer.appendChild(closeBtn);
-    overlay.appendChild(screenshotImg);
-    overlay.appendChild(buttonsContainer);
-    document.body.appendChild(overlay);
-
-    // Close on ESC key
-    const escHandler = (e) => {
-      if (e.key === 'Escape') {
-        closeBtn.click();
-        document.removeEventListener('keydown', escHandler);
-      }
-    };
-    document.addEventListener('keydown', escHandler);
-
-    // Close on clicking overlay background
-    overlay.onclick = (e) => {
-      if (e.target === overlay) {
-        closeBtn.click();
-      }
-    };
+    // Open blob URL in new tab
+    window.open(blobUrl, '_blank');
+    cleanup();
   }
 
   // Cancel on ESC key
