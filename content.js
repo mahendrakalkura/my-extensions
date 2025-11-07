@@ -68,7 +68,7 @@
         }
 
         // Now crop the image in the content script (not service worker)
-        cropAndDownload(response.dataUrl, rect, filename);
+        cropAndDisplay(response.dataUrl, rect, filename);
       });
 
     } catch (error) {
@@ -96,8 +96,8 @@
     return `${cleanName}.png`;
   }
 
-  // Crop the screenshot and download it
-  function cropAndDownload(dataUrl, rect, filename) {
+  // Crop the screenshot and display it on page
+  function cropAndDisplay(dataUrl, rect, filename) {
     const img = new Image();
 
     img.onload = () => {
@@ -120,30 +120,16 @@
           rect.width * scale, rect.height * scale        // Destination width, height
         );
 
-        // Convert to blob and download (PNG preserves transparency)
+        // Convert to blob and display on page
         canvas.toBlob((blob) => {
           const url = URL.createObjectURL(blob);
-
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = filename;
-          a.style.display = 'none';
-          document.body.appendChild(a);
-          a.click();
-
-          // Cleanup
-          setTimeout(() => {
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-          }, 100);
-
-          console.log('Screenshot saved successfully');
+          displayScreenshot(url, filename);
+          console.log('Screenshot displayed successfully');
         }, 'image/png'); // PNG format preserves transparency
 
       } catch (error) {
         console.error('Cropping failed:', error);
         alert('Screenshot cropping failed: ' + error.message);
-      } finally {
         cleanup();
       }
     };
@@ -155,6 +141,112 @@
     };
 
     img.src = dataUrl;
+  }
+
+  // Display screenshot in a modal overlay
+  function displayScreenshot(blobUrl, filename) {
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'screenshot-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 2147483647;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 20px;
+    `;
+
+    // Create image
+    const screenshotImg = document.createElement('img');
+    screenshotImg.src = blobUrl;
+    screenshotImg.style.cssText = `
+      max-width: 90%;
+      max-height: 80%;
+      object-fit: contain;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    `;
+
+    // Create buttons container
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.style.cssText = `
+      display: flex;
+      gap: 10px;
+    `;
+
+    // Create download button
+    const downloadBtn = document.createElement('button');
+    downloadBtn.textContent = 'Download';
+    downloadBtn.style.cssText = `
+      background: #4285f4;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: 500;
+    `;
+    downloadBtn.onmouseover = () => downloadBtn.style.background = '#3367d6';
+    downloadBtn.onmouseout = () => downloadBtn.style.background = '#4285f4';
+    downloadBtn.onclick = () => {
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      a.click();
+    };
+
+    // Create close button
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = 'Close';
+    closeBtn.style.cssText = `
+      background: #5f6368;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: 500;
+    `;
+    closeBtn.onmouseover = () => closeBtn.style.background = '#4a4d50';
+    closeBtn.onmouseout = () => closeBtn.style.background = '#5f6368';
+    closeBtn.onclick = () => {
+      document.body.removeChild(overlay);
+      URL.revokeObjectURL(blobUrl);
+      cleanup();
+    };
+
+    // Assemble the overlay
+    buttonsContainer.appendChild(downloadBtn);
+    buttonsContainer.appendChild(closeBtn);
+    overlay.appendChild(screenshotImg);
+    overlay.appendChild(buttonsContainer);
+    document.body.appendChild(overlay);
+
+    // Close on ESC key
+    const escHandler = (e) => {
+      if (e.key === 'Escape') {
+        closeBtn.click();
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+
+    // Close on clicking overlay background
+    overlay.onclick = (e) => {
+      if (e.target === overlay) {
+        closeBtn.click();
+      }
+    };
   }
 
   // Cancel on ESC key
