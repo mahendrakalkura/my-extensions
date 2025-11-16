@@ -1,209 +1,88 @@
-(function() {
+(() => {
   'use strict';
 
-  // Prevent multiple injections
-  if (window.divScreenshotActive) {
-    return;
-  }
+  if (window.divScreenshotActive) return;
   window.divScreenshotActive = true;
 
-  let currentElement = null;
+  let current = null;
 
-  // Add hover effect
-  function onMouseOver(e) {
-    // Remove previous highlight
-    if (currentElement && currentElement !== e.target) {
-      currentElement.classList.remove('div-screenshot-highlight');
-    }
-
-    // Add highlight to current element
-    currentElement = e.target;
-    currentElement.classList.add('div-screenshot-highlight');
-
+  const onMouseOver = (e) => {
+    current?.classList.remove('div-screenshot-highlight');
+    current = e.target;
+    current.classList.add('div-screenshot-highlight');
     e.stopPropagation();
-  }
+  };
 
-  // Capture screenshot on click
-  async function onClick(e) {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const elementToCapture = e.target;
-
-    // Remove highlight before capturing
-    elementToCapture.classList.remove('div-screenshot-highlight');
-
-    // Remove all highlights from document
-    document.querySelectorAll('.div-screenshot-highlight').forEach(el => {
-      el.classList.remove('div-screenshot-highlight');
-    });
-
-    // Scroll element fully into view if needed
-    elementToCapture.scrollIntoView({
-      behavior: 'instant',
-      block: 'nearest',
-      inline: 'nearest'
-    });
-
-    // Wait for next frame to ensure:
-    // 1. Highlight styles are fully removed
-    // 2. Scroll has completed
-    await new Promise(resolve => requestAnimationFrame(resolve));
-    await new Promise(resolve => requestAnimationFrame(resolve));
-
-    // Get element bounds relative to viewport AFTER scrolling
-    const rect = elementToCapture.getBoundingClientRect();
-
-    // Generate descriptive filename
-    const filename = generateFilename(elementToCapture);
-
-    try {
-      // Request full tab screenshot from background
-      chrome.runtime.sendMessage({ action: 'captureTab' }, (response) => {
-        if (!response || !response.success) {
-          console.error('Screenshot failed:', response?.error);
-          alert('Screenshot failed: ' + (response?.error || 'Unknown error'));
-          cleanup();
-          return;
-        }
-
-        // Now crop the image in the content script (not service worker)
-        cropAndDisplay(response.dataUrl, rect, filename);
-      });
-
-    } catch (error) {
-      console.error('Screenshot failed:', error);
-      alert('Screenshot failed. Please try again.');
-      cleanup();
-    }
-  }
-
-  // Generate descriptive filename based on element
-  function generateFilename(element) {
-    const tag = element.tagName.toLowerCase();
-    const id = element.id ? `-${element.id}` : '';
-    const className = element.className && typeof element.className === 'string'
-      ? `-${element.className.split(' ').filter(c => c && !c.startsWith('div-screenshot')).join('-')}`
+  const generateFilename = (el) => {
+    const tag = el.tagName.toLowerCase();
+    const id = el.id ? `-${el.id}` : '';
+    const cls = el.className && typeof el.className === 'string'
+      ? `-${el.className.split(' ').filter(c => c && !c.startsWith('div-screenshot')).join('-')}`
       : '';
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    return `screenshot-${tag}${id}${cls}-${timestamp}`.replace(/[^a-z0-9\-_.]/gi, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '.png';
+  };
 
-    // Clean up filename (remove invalid characters)
-    const cleanName = `screenshot-${tag}${id}${className}-${timestamp}`
-      .replace(/[^a-z0-9\-_.]/gi, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
-
-    return `${cleanName}.png`;
-  }
-
-  // Crop the screenshot and display it on page
-  function cropAndDisplay(dataUrl, rect, filename) {
+  const cropAndDisplay = (dataUrl, rect, filename) => {
     const img = new Image();
-
     img.onload = () => {
-      try {
-        // Create canvas for cropping
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d', { alpha: true }); // Preserve transparency
-        const scale = window.devicePixelRatio || 1;
-
-        // Set canvas size to element size
-        canvas.width = rect.width * scale;
-        canvas.height = rect.height * scale;
-
-        // Draw the cropped portion
-        ctx.drawImage(
-          img,
-          rect.left * scale, rect.top * scale,           // Source x, y
-          rect.width * scale, rect.height * scale,       // Source width, height
-          0, 0,                                           // Destination x, y
-          rect.width * scale, rect.height * scale        // Destination width, height
-        );
-
-        // Convert to blob and display on page
-        canvas.toBlob((blob) => {
-          const url = URL.createObjectURL(blob);
-          displayScreenshot(url, filename);
-          console.log('Screenshot displayed successfully');
-        }, 'image/png'); // PNG format preserves transparency
-
-      } catch (error) {
-        console.error('Cropping failed:', error);
-        alert('Screenshot cropping failed: ' + error.message);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d', { alpha: true });
+      const scale = window.devicePixelRatio || 1;
+      canvas.width = rect.width * scale;
+      canvas.height = rect.height * scale;
+      ctx.drawImage(img, rect.left * scale, rect.top * scale, rect.width * scale, rect.height * scale, 0, 0, rect.width * scale, rect.height * scale);
+      canvas.toBlob((blob) => {
+        window.open(URL.createObjectURL(blob), '_blank');
         cleanup();
-      }
+      }, 'image/png');
     };
-
     img.onerror = () => {
-      console.error('Failed to load captured image');
       alert('Failed to load captured image');
       cleanup();
     };
-
     img.src = dataUrl;
-  }
+  };
 
-  // Display screenshot in a new tab as blob
-  function displayScreenshot(blobUrl, filename) {
-    // Open blob URL in new tab
-    window.open(blobUrl, '_blank');
-    cleanup();
-  }
+  const onClick = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const el = e.target;
+    el.classList.remove('div-screenshot-highlight');
+    document.querySelectorAll('.div-screenshot-highlight').forEach(e => e.classList.remove('div-screenshot-highlight'));
+    el.scrollIntoView({ behavior: 'instant', block: 'nearest', inline: 'nearest' });
+    await new Promise(r => requestAnimationFrame(r));
+    await new Promise(r => requestAnimationFrame(r));
+    const rect = el.getBoundingClientRect();
+    const filename = generateFilename(el);
+    chrome.runtime.sendMessage({ action: 'captureTab' }, (res) => {
+      if (!res?.success) {
+        alert('Screenshot failed: ' + (res?.error || 'Unknown error'));
+        cleanup();
+        return;
+      }
+      cropAndDisplay(res.dataUrl, rect, filename);
+    });
+  };
 
-  // Cancel on ESC key
-  function onKeyDown(e) {
-    if (e.key === 'Escape') {
-      cleanup();
-    }
-  }
-
-  // Cleanup function
-  function cleanup() {
+  const cleanup = () => {
     document.removeEventListener('mouseover', onMouseOver, true);
     document.removeEventListener('click', onClick, true);
     document.removeEventListener('keydown', onKeyDown, true);
-
-    if (currentElement) {
-      currentElement.classList.remove('div-screenshot-highlight');
-    }
-
-    // Remove all highlights
-    document.querySelectorAll('.div-screenshot-highlight').forEach(el => {
-      el.classList.remove('div-screenshot-highlight');
-    });
-
+    current?.classList.remove('div-screenshot-highlight');
+    document.querySelectorAll('.div-screenshot-highlight').forEach(e => e.classList.remove('div-screenshot-highlight'));
     window.divScreenshotActive = false;
-  }
+  };
 
-  // Initialize
+  const onKeyDown = (e) => e.key === 'Escape' && cleanup();
+
   document.addEventListener('mouseover', onMouseOver, true);
   document.addEventListener('click', onClick, true);
   document.addEventListener('keydown', onKeyDown, true);
 
-  // Visual feedback that extension is active
   const indicator = document.createElement('div');
   indicator.textContent = 'Hover over an element and click to screenshot. Press ESC to cancel.';
-  indicator.style.cssText = `
-    position: fixed;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #4285f4;
-    color: white;
-    padding: 12px 24px;
-    border-radius: 4px;
-    font-family: Arial, sans-serif;
-    font-size: 14px;
-    z-index: 999999;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    pointer-events: none;
-  `;
+  indicator.style.cssText = `position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#4285f4;color:white;padding:12px 24px;border-radius:4px;font-family:Arial,sans-serif;font-size:14px;z-index:999999;box-shadow:0 2px 8px rgba(0,0,0,0.3);pointer-events:none`;
   document.body.appendChild(indicator);
-
-  // Remove indicator after 3 seconds
-  setTimeout(() => {
-    if (indicator.parentNode) {
-      indicator.parentNode.removeChild(indicator);
-    }
-  }, 3000);
+  setTimeout(() => indicator.remove(), 3000);
 })();
