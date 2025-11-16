@@ -16,6 +16,12 @@ A Chrome extension with useful productivity features.
 - No need to hover to see controls
 - Works on all YouTube videos
 
+### Auto-Expand Content
+- Right-click on any page → "Expand all content" to automatically expand "Read more", "Show more", etc.
+- Intelligently finds and clicks expand buttons across the page
+- Works multiple times to catch nested expandable content
+- Shows a notification with how many elements were expanded
+
 ## Installation Instructions (Local/Unpacked)
 
 Since you're not publishing this extension to the Chrome Web Store, you'll install it locally as an "unpacked extension". Here's how:
@@ -29,6 +35,7 @@ my-extensions/
 ├── background.js
 ├── content.js
 ├── content.css
+├── auto-expand.js
 ├── youtube.css
 └── README.md
 ```
@@ -88,6 +95,13 @@ You should now see your extension listed on the extensions page:
 - Controls stay visible when not in fullscreen
 - No configuration needed
 
+### Auto-Expand Content
+1. **Navigate** to any webpage with expandable content (articles, social media, etc.)
+2. **Right-click** anywhere on the page
+3. Select **"Expand all content"** from the context menu
+4. The extension will automatically find and click all "Read more", "Show more", etc. buttons
+5. A green notification will appear showing how many elements were expanded
+
 ## Troubleshooting
 
 ### Extension doesn't appear after loading
@@ -139,6 +153,7 @@ If you make changes to the extension files:
 - `background.js` - Service worker that handles icon clicks and context menu
 - `content.js` - Handles element selection and screenshot capture
 - `content.css` - Styling for the highlight effect
+- `auto-expand.js` - Automatically expands "Read more" and similar buttons
 - `youtube.css` - CSS overrides to keep YouTube controls visible
 
 ## Browser Compatibility
