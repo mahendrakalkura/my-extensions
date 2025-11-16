@@ -18,9 +18,11 @@ A Chrome extension with useful productivity features.
 
 ### Auto-Expand Content
 - Right-click on any page → "Expand all content" to automatically expand "Read more", "Show more", etc.
-- Intelligently finds and clicks expand buttons across the page
-- Works multiple times to catch nested expandable content
-- Shows a notification with how many elements were expanded
+- **Continuous monitoring mode**: Automatically expands new content as it loads (perfect for infinite scroll!)
+- Works on Twitter/X, Reddit, LinkedIn, Medium, and other sites with expandable content
+- Toggle on/off by clicking the context menu again
+- Shows a blue indicator badge when active
+- Intelligently avoids re-clicking already expanded content
 
 ## Installation Instructions (Local/Unpacked)
 
@@ -96,11 +98,19 @@ You should now see your extension listed on the extensions page:
 - No configuration needed
 
 ### Auto-Expand Content
-1. **Navigate** to any webpage with expandable content (articles, social media, etc.)
+1. **Navigate** to any webpage with expandable content (Twitter/X, Reddit, articles, etc.)
 2. **Right-click** anywhere on the page
 3. Select **"Expand all content"** from the context menu
-4. The extension will automatically find and click all "Read more", "Show more", etc. buttons
-5. A green notification will appear showing how many elements were expanded
+4. The extension activates **continuous monitoring mode**:
+   - Immediately expands all current "Read more", "Show more", etc. buttons
+   - A blue notification shows how many elements were expanded
+   - A persistent blue badge appears in the bottom-right corner
+   - As you scroll and new content loads, it automatically expands
+5. **To stop**: Right-click → "Expand all content" again (acts as a toggle)
+   - The badge disappears and monitoring stops
+   - A red notification confirms it's stopped
+
+**Perfect for infinite scroll sites like Twitter/X!** Just enable it once and all tweets will auto-expand as you scroll.
 
 ## Troubleshooting
 
