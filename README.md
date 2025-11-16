@@ -13,9 +13,9 @@ A Chrome extension with useful productivity features.
 
 ### YouTube Always-Show-Controls
 - Automatically keeps YouTube video controls visible when not in fullscreen mode
-- No need to hover to see controls
+- Progress bar and time display update continuously during playback
+- Uses Stack Overflow community solution (CC BY-SA 4.0)
 - Works on all YouTube videos
-- Note: Progress bar updates when hovering over video (CSS-only limitation)
 
 ### Auto-Expand Content
 - Right-click on any page → "Expand all content" to automatically expand "Read more", "Show more", etc.
@@ -40,6 +40,7 @@ my-extensions/
 ├── content.css
 ├── auto-expand.js
 ├── youtube.css
+├── youtube.js
 └── README.md
 ```
 
@@ -96,6 +97,7 @@ You should now see your extension listed on the extensions page:
 ### YouTube Controls
 - Automatically active on all YouTube pages
 - Controls stay visible when not in fullscreen
+- Progress bar updates continuously
 - No configuration needed
 
 ### Auto-Expand Content
@@ -166,6 +168,7 @@ If you make changes to the extension files:
 - `content.css` - Styling for the highlight effect
 - `auto-expand.js` - Automatically expands "Read more" and similar buttons
 - `youtube.css` - CSS overrides to keep YouTube controls visible
+- `youtube.js` - Updates YouTube controls via polling (Stack Overflow solution)
 
 ## Browser Compatibility
 
