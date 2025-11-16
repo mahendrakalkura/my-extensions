@@ -12,9 +12,14 @@
 }
 
 .ytp-play-progress {
-  transform-origin: left center !important;
+  transition: width 0.1s linear !important;
+}
+
+.ytp-load-progress {
+  transition: width 0.3s ease !important;
 }
 
 .ytp-scrubber-button {
   transition: left 0.1s linear !important;
+  position: absolute !important;
 }

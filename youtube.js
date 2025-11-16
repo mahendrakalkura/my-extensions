@@ -10,27 +10,24 @@
       : `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  const updateProgress = () => {
-    const video = document.querySelector('video');
+  const updateProgress = (video) => {
     if (!video || !video.duration) return;
 
-    const progress = video.currentTime / video.duration;
-    const progressPercent = progress * 100;
+    const progress = (video.currentTime / video.duration) * 100;
 
     const playProgress = document.querySelector('.ytp-play-progress');
     if (playProgress) {
-      playProgress.style.transform = `scaleX(${progress})`;
-      playProgress.style.width = `${progressPercent}%`;
+      playProgress.style.width = `${progress}%`;
     }
 
     const scrubber = document.querySelector('.ytp-scrubber-button');
     if (scrubber) {
-      scrubber.style.left = `${progressPercent}%`;
+      scrubber.style.left = `${progress}%`;
     }
 
     const progressBar = document.querySelector('.ytp-progress-bar');
     if (progressBar) {
-      progressBar.setAttribute('aria-valuenow', video.currentTime);
+      progressBar.setAttribute('aria-valuenow', Math.floor(video.currentTime));
     }
 
     const timeDisplay = document.querySelector('.ytp-time-current');
@@ -39,16 +36,37 @@
     }
   };
 
+  const updateBuffered = (video) => {
+    if (!video || !video.duration || video.buffered.length === 0) return;
+
+    const bufferedEnd = video.buffered.end(video.buffered.length - 1);
+    const bufferedProgress = (bufferedEnd / video.duration) * 100;
+
+    const loadProgress = document.querySelector('.ytp-load-progress');
+    if (loadProgress) {
+      loadProgress.style.width = `${bufferedProgress}%`;
+    }
+  };
+
   const init = () => {
     const video = document.querySelector('video');
 
     if (video) {
-      video.addEventListener('timeupdate', updateProgress);
-      video.addEventListener('loadedmetadata', updateProgress);
+      const onTimeUpdate = () => updateProgress(video);
+      const onProgress = () => updateBuffered(video);
+      const onLoadedMetadata = () => {
+        updateProgress(video);
+        updateBuffered(video);
+      };
+
+      video.addEventListener('timeupdate', onTimeUpdate);
+      video.addEventListener('progress', onProgress);
+      video.addEventListener('loadedmetadata', onLoadedMetadata);
+
       video.addEventListener('play', () => {
         const animate = () => {
           if (!video.paused) {
-            updateProgress();
+            updateProgress(video);
             requestAnimationFrame(animate);
           }
         };
@@ -56,7 +74,8 @@
       });
 
       if (video.readyState >= 2) {
-        updateProgress();
+        updateProgress(video);
+        updateBuffered(video);
       }
     } else {
       setTimeout(init, 500);
