@@ -11,6 +11,10 @@
   display: block !important;
 }
 
-.ytp-progress-bar {
-  transition: transform 0.1s linear !important;
+.ytp-play-progress {
+  transform-origin: left center !important;
+}
+
+.ytp-scrubber-button {
+  transition: left 0.1s linear !important;
 }
