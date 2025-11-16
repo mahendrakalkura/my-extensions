@@ -1,7 +1,20 @@
 // Auto-expand "Read more", "Show more", etc. on the page
+// Supports both one-time and continuous monitoring modes
 
 (function() {
   'use strict';
+
+  // Check if auto-expand is already running
+  if (window.__autoExpandActive) {
+    // Toggle off - stop the observer
+    if (window.__autoExpandObserver) {
+      window.__autoExpandObserver.disconnect();
+      window.__autoExpandObserver = null;
+    }
+    window.__autoExpandActive = false;
+    showNotification('Auto-expand stopped', '#f44336');
+    return;
+  }
 
   // Common text patterns for expand buttons
   const expandPatterns = [
@@ -35,6 +48,9 @@
     'details:not([open]) summary'
   ];
 
+  // Track expanded elements to avoid re-clicking
+  const expandedElements = new WeakSet();
+
   function matchesExpandPattern(text) {
     if (!text) return false;
     const trimmed = text.trim();
@@ -42,6 +58,11 @@
   }
 
   function isExpandButton(element) {
+    // Skip if already expanded
+    if (expandedElements.has(element)) {
+      return false;
+    }
+
     // Check if element text matches expand patterns
     const text = element.textContent || element.innerText || element.value || element.title || element.getAttribute('aria-label');
     if (matchesExpandPattern(text)) {
@@ -79,7 +100,8 @@
     elements.forEach(element => {
       if (isVisible(element) && isExpandButton(element)) {
         try {
-          // Try clicking the element
+          // Mark as expanded before clicking to avoid double-clicking
+          expandedElements.add(element);
           element.click();
           expandedCount++;
         } catch (e) {
@@ -91,7 +113,8 @@
     // Handle details/summary separately
     const details = document.querySelectorAll('details:not([open])');
     details.forEach(detail => {
-      if (isVisible(detail)) {
+      if (!expandedElements.has(detail) && isVisible(detail)) {
+        expandedElements.add(detail);
         detail.open = true;
         expandedCount++;
       }
@@ -100,7 +123,7 @@
     return expandedCount;
   }
 
-  function expandMultipleTimes() {
+  function expandMultipleTimes(callback) {
     let totalExpanded = 0;
     let previousCount = 0;
     let iterations = 0;
@@ -115,28 +138,29 @@
       // Stop if no new elements were expanded or max iterations reached
       if ((count === 0 && previousCount === 0) || iterations >= maxIterations) {
         clearInterval(interval);
-
-        // Show feedback to user
-        if (totalExpanded > 0) {
-          showNotification(`Expanded ${totalExpanded} element${totalExpanded === 1 ? '' : 's'}`);
-        } else {
-          showNotification('No expandable content found');
-        }
+        if (callback) callback(totalExpanded);
       }
 
       previousCount = count;
     }, 500);
   }
 
-  function showNotification(message) {
+  function showNotification(message, color = '#4CAF50') {
+    // Remove existing notification if present
+    const existing = document.getElementById('auto-expand-notification');
+    if (existing) {
+      existing.remove();
+    }
+
     // Create a temporary notification
     const notification = document.createElement('div');
+    notification.id = 'auto-expand-notification';
     notification.textContent = message;
     notification.style.cssText = `
       position: fixed;
       top: 20px;
       right: 20px;
-      background: #4CAF50;
+      background: ${color};
       color: white;
       padding: 16px 24px;
       border-radius: 8px;
@@ -148,31 +172,34 @@
       animation: slideIn 0.3s ease-out;
     `;
 
-    // Add animation keyframes
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes slideIn {
-        from {
-          transform: translateX(400px);
-          opacity: 0;
+    // Add animation keyframes if not already present
+    if (!document.getElementById('auto-expand-styles')) {
+      const style = document.createElement('style');
+      style.id = 'auto-expand-styles';
+      style.textContent = `
+        @keyframes slideIn {
+          from {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
         }
-        to {
-          transform: translateX(0);
-          opacity: 1;
+        @keyframes slideOut {
+          from {
+            transform: translateX(0);
+            opacity: 1;
+          }
+          to {
+            transform: translateX(400px);
+            opacity: 0;
+          }
         }
-      }
-      @keyframes slideOut {
-        from {
-          transform: translateX(0);
-          opacity: 1;
-        }
-        to {
-          transform: translateX(400px);
-          opacity: 0;
-        }
-      }
-    `;
-    document.head.appendChild(style);
+      `;
+      document.head.appendChild(style);
+    }
 
     document.body.appendChild(notification);
 
@@ -181,11 +208,86 @@
       notification.style.animation = 'slideOut 0.3s ease-out';
       setTimeout(() => {
         notification.remove();
-        style.remove();
       }, 300);
     }, 3000);
   }
 
-  // Start the expansion process
-  expandMultipleTimes();
+  function startContinuousMode() {
+    window.__autoExpandActive = true;
+
+    // Initial expansion
+    expandMultipleTimes((count) => {
+      showNotification(`Continuous auto-expand enabled (${count} expanded)`, '#2196F3');
+    });
+
+    // Set up MutationObserver to watch for new content
+    const observer = new MutationObserver((mutations) => {
+      // Debounce: only expand after mutations settle
+      if (window.__autoExpandTimeout) {
+        clearTimeout(window.__autoExpandTimeout);
+      }
+
+      window.__autoExpandTimeout = setTimeout(() => {
+        const count = expandAll();
+        if (count > 0) {
+          console.debug(`Auto-expanded ${count} new element(s)`);
+        }
+      }, 300);
+    });
+
+    // Observe the entire document for changes
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['aria-expanded', 'class']
+    });
+
+    window.__autoExpandObserver = observer;
+
+    // Show persistent indicator
+    showPersistentIndicator();
+  }
+
+  function showPersistentIndicator() {
+    // Remove existing indicator if present
+    const existing = document.getElementById('auto-expand-indicator');
+    if (existing) {
+      existing.remove();
+    }
+
+    const indicator = document.createElement('div');
+    indicator.id = 'auto-expand-indicator';
+    indicator.textContent = '🔄 Auto-expand active';
+    indicator.title = 'Click context menu "Expand all content" again to stop';
+    indicator.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(33, 150, 243, 0.95);
+      color: white;
+      padding: 10px 16px;
+      border-radius: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      z-index: 2147483647;
+      cursor: help;
+      user-select: none;
+    `;
+
+    document.body.appendChild(indicator);
+
+    // Remove indicator when auto-expand is stopped
+    const checkInterval = setInterval(() => {
+      if (!window.__autoExpandActive) {
+        indicator.remove();
+        clearInterval(checkInterval);
+      }
+    }, 1000);
+  }
+
+  // Start continuous mode
+  startContinuousMode();
 })();
