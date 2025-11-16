@@ -1,0 +1,16 @@
+.html5-video-player:not(.ytp-fullscreen) .ytp-chrome-bottom,
+.html5-video-player:not(.ytp-fullscreen).ytp-autohide .ytp-chrome-bottom {
+  opacity: 1 !important;
+  display: flex !important;
+  transform: translateY(0) !important;
+}
+
+.html5-video-player:not(.ytp-fullscreen) .ytp-gradient-bottom,
+.html5-video-player:not(.ytp-fullscreen).ytp-autohide .ytp-gradient-bottom {
+  opacity: 1 !important;
+  display: block !important;
+}
+
+.ytp-progress-bar {
+  transition: transform 0.1s linear !important;
+}

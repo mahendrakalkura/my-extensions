@@ -11,6 +11,12 @@ A Chrome extension with useful productivity features.
 - Screenshot opens in new tab as blob URL
 - Press ESC to cancel
 
+### YouTube Always-Show-Controls
+- Automatically keeps YouTube video controls visible when not in fullscreen mode
+- Progress bar updates continuously using video timeupdate events
+- No CPU overhead or performance issues
+- Works on all YouTube videos
+
 ### Auto-Expand Content
 - Right-click on any page → "Expand all content" to automatically expand "Read more", "Show more", etc.
 - **Continuous monitoring mode**: Automatically expands new content as it loads (perfect for infinite scroll!)
@@ -33,6 +39,8 @@ my-extensions/
 ├── content.js
 ├── content.css
 ├── auto-expand.js
+├── youtube.css
+├── youtube.js
 └── README.md
 ```
 
@@ -85,6 +93,12 @@ You should now see your extension listed on the extensions page:
 6. Right-click the image to save if needed
 
 **To cancel**: Press the **ESC** key at any time
+
+### YouTube Controls
+- Automatically active on all YouTube pages
+- Controls stay visible when not in fullscreen
+- Progress bar updates continuously during playback
+- No configuration needed
 
 ### Auto-Expand Content
 1. **Navigate** to any webpage with expandable content (Twitter/X, Reddit, articles, etc.)
@@ -153,6 +167,8 @@ If you make changes to the extension files:
 - `content.js` - Handles element selection and screenshot capture
 - `content.css` - Styling for the highlight effect
 - `auto-expand.js` - Automatically expands "Read more" and similar buttons
+- `youtube.css` - CSS overrides to keep YouTube controls visible
+- `youtube.js` - Updates YouTube progress bar using timeupdate events
 
 ## Browser Compatibility
 
@@ -165,11 +181,12 @@ If you make changes to the extension files:
 
 This extension:
 - Screenshot feature only runs when you activate it (click icon or context menu)
+- YouTube feature uses native video events (timeupdate, play)
 - Auto-expand feature only runs when you activate it (context menu)
 - Does NOT collect any data
 - Does NOT send information anywhere
 - Runs completely locally on your computer
-- Only requires access to the active tab
+- Only requires access to the active tab and YouTube pages
 
 ## License
 
