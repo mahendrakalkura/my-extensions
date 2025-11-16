@@ -2,37 +2,38 @@
 (function() {
   'use strict';
 
+  let isProcessing = false;
+
   function forceShowControls() {
-    // Get all video players on the page
-    const players = document.querySelectorAll('.html5-video-player');
+    // Prevent re-entry
+    if (isProcessing) return;
+    isProcessing = true;
 
-    players.forEach(player => {
-      // Check if video is NOT in fullscreen
-      const isFullscreen = player.classList.contains('ytp-fullscreen');
+    try {
+      // Get all video players on the page
+      const players = document.querySelectorAll('.html5-video-player');
 
-      if (!isFullscreen) {
-        // Remove autohide class to keep controls visible
-        player.classList.remove('ytp-autohide');
-      }
-    });
+      players.forEach(player => {
+        // Check if video is NOT in fullscreen
+        const isFullscreen = player.classList.contains('ytp-fullscreen');
+
+        if (!isFullscreen && player.classList.contains('ytp-autohide')) {
+          // Remove autohide class to keep controls visible
+          player.classList.remove('ytp-autohide');
+        }
+      });
+    } finally {
+      isProcessing = false;
+    }
   }
 
-  // Run on page load
-  forceShowControls();
-
-  // Watch for changes (videos loading, fullscreen toggle, etc.)
-  const observer = new MutationObserver(() => {
+  // Run when page loads
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', forceShowControls);
+  } else {
     forceShowControls();
-  });
+  }
 
-  // Observe the body for any changes
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['class']
-  });
-
-  // Also force show controls periodically as a fallback
-  setInterval(forceShowControls, 500);
+  // Only check every 2 seconds (much less aggressive)
+  setInterval(forceShowControls, 2000);
 })();
