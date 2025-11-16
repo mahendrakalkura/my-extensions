@@ -11,7 +11,7 @@
   const init = () => {
     const player = document.querySelector('.html5-video-player');
     if (player) {
-      setInterval(update, 1000);
+      setInterval(update, 300);
     } else {
       setTimeout(init, 500);
     }
