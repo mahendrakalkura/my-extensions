@@ -10,16 +10,3 @@
   opacity: 1 !important;
   display: block !important;
 }
-
-.ytp-play-progress {
-  transition: width 0.1s linear !important;
-}
-
-.ytp-load-progress {
-  transition: width 0.3s ease !important;
-}
-
-.ytp-scrubber-button {
-  transition: left 0.1s linear !important;
-  position: absolute !important;
-}
