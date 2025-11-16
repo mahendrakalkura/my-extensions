@@ -5,6 +5,11 @@ chrome.runtime.onInstalled.addListener(() => {
     title: 'Take screenshot',
     contexts: ['all']
   });
+  chrome.contextMenus.create({
+    id: 'auto-expand',
+    title: 'Expand all content',
+    contexts: ['page']
+  });
 });
 
 // Function to activate screenshot mode
@@ -28,6 +33,11 @@ chrome.action.onClicked.addListener((tab) => {
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'screenshot-element') {
     activateScreenshotMode(tab.id);
+  } else if (info.menuItemId === 'auto-expand') {
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ['auto-expand.js']
+    });
   }
 });
 
