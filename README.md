@@ -1,14 +1,20 @@
-# Div Screenshot Chrome Extension
+# My Extensions
 
-A simple Chrome extension that lets you screenshot any div element on a webpage with just a hover and click.
+A Chrome extension with useful productivity features.
 
 ## Features
 
-- Click the extension icon to activate selection mode
+### Element Screenshot
+- Click the extension icon or right-click → "Take screenshot" to activate selection mode
 - Hover over any element to highlight it
-- Click to capture and automatically download a screenshot
+- Click to capture screenshot
+- Screenshot opens in new tab as blob URL
 - Press ESC to cancel
-- No prompts, no dialogs - completely automatic
+
+### YouTube Always-Show-Controls
+- Automatically keeps YouTube video controls visible when not in fullscreen mode
+- No need to hover to see controls
+- Works on all YouTube videos
 
 ## Installation Instructions (Local/Unpacked)
 
@@ -18,13 +24,13 @@ Since you're not publishing this extension to the Chrome Web Store, you'll insta
 
 Make sure you have all the extension files in a local folder on your computer. The folder should contain:
 ```
-chrome-screenshot/
+my-extensions/
 ├── manifest.json
 ├── background.js
 ├── content.js
 ├── content.css
-└── lib/
-    └── html2canvas.min.js
+├── youtube.css
+└── README.md
 ```
 
 ### Step 2: Open Chrome Extensions Page
@@ -46,35 +52,41 @@ chrome-screenshot/
 ### Step 4: Load the Extension
 
 1. Click the **Load unpacked** button (it appears in the top-left after enabling Developer mode)
-2. Navigate to the folder containing your extension files (the `chrome-screenshot` folder)
+2. Navigate to the folder containing your extension files (the `my-extensions` folder)
 3. Select the folder and click **Select Folder** (or **Open** on Mac)
 
 ### Step 5: Verify Installation
 
 You should now see your extension listed on the extensions page:
-- **Name**: Div Screenshot
+- **Name**: My Extensions
 - **Version**: 1.0
 - **ID**: A unique ID will be generated
 - Status should show **Enabled**
 
 ### Step 6: Pin the Extension (Recommended)
 
-1. Look for the extension icon in your Chrome toolbar (it will be a blue square)
+1. Look for the extension icon in your Chrome toolbar
    - If you don't see it, click the puzzle piece icon (🧩) in the toolbar
-2. Find "Div Screenshot" in the dropdown
+2. Find "My Extensions" in the dropdown
 3. Click the **pin icon** (📌) next to it
 4. The extension icon will now appear directly in your toolbar for easy access
 
 ## How to Use
 
+### Taking Screenshots
 1. **Navigate** to any webpage
-2. **Click** the extension icon (blue square) in your toolbar
+2. **Click** the extension icon OR **right-click** → "Take screenshot"
 3. **Hover** over elements on the page - they will highlight with a blue border
 4. **Click** the element you want to screenshot
-5. The screenshot will **automatically download** as a PNG file to your Downloads folder
-6. Done! The file will be named `screenshot-YYYY-MM-DDTHH-MM-SS.png`
+5. Screenshot opens in a new tab as blob URL
+6. Right-click the image to save if needed
 
 **To cancel**: Press the **ESC** key at any time
+
+### YouTube Controls
+- Automatically active on all YouTube pages
+- Controls stay visible when not in fullscreen
+- No configuration needed
 
 ## Troubleshooting
 
@@ -86,10 +98,10 @@ You should now see your extension listed on the extensions page:
 - Verify that `manifest.json` exists in the folder you selected
 - Make sure the file is named exactly `manifest.json` (not `manifest.json.txt`)
 
-### Screenshots aren't downloading
-- Check your Chrome download settings
-- Make sure Chrome has permission to download files
-- Look in your Downloads folder - the file might be there with a timestamp name
+### Screenshots not opening in new tab
+- Make sure popup blocker isn't blocking the new tab
+- Check browser console (F12) for errors
+- Try reloading the extension
 
 ### Extension icon is grayed out
 - The extension can't run on Chrome internal pages (like `chrome://extensions/`)
@@ -117,17 +129,17 @@ If you make changes to the extension files:
 ## Uninstalling
 
 1. Go to `chrome://extensions/`
-2. Find "Div Screenshot"
+2. Find "My Extensions"
 3. Click **Remove**
 4. Confirm the removal
 
 ## File Structure
 
 - `manifest.json` - Extension configuration and permissions
-- `background.js` - Service worker that activates when you click the icon
+- `background.js` - Service worker that handles icon clicks and context menu
 - `content.js` - Handles element selection and screenshot capture
 - `content.css` - Styling for the highlight effect
-- `lib/html2canvas.min.js` - Library for converting DOM elements to images
+- `youtube.css` - CSS overrides to keep YouTube controls visible
 
 ## Browser Compatibility
 
@@ -139,11 +151,12 @@ If you make changes to the extension files:
 ## Privacy
 
 This extension:
-- Only runs when you click the icon
+- Screenshot feature only runs when you activate it (click icon or context menu)
+- YouTube feature only modifies CSS on YouTube pages
 - Does NOT collect any data
 - Does NOT send information anywhere
 - Runs completely locally on your computer
-- Only requires access to the active tab when activated
+- Only requires access to the active tab and YouTube pages
 
 ## License
 

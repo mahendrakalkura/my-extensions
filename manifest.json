@@ -1,15 +1,15 @@
 {
   "manifest_version": 3,
-  "name": "Div Screenshot",
+  "name": "My Extensions",
   "version": "1.0",
-  "description": "Click to select and screenshot any div on a webpage",
+  "description": "Screenshot any element on a webpage and always show YouTube controls",
   "permissions": [
     "activeTab",
     "scripting",
     "contextMenus"
   ],
   "action": {
-    "default_title": "Screenshot a div"
+    "default_title": "Take screenshot"
   },
   "background": {
     "service_worker": "background.js"
