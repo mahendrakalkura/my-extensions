@@ -1,0 +1,20 @@
+/* Force YouTube controls to always show when not in fullscreen */
+.html5-video-player:not(.ytp-fullscreen) .ytp-chrome-bottom {
+  opacity: 1 !important;
+  display: flex !important;
+}
+
+.html5-video-player:not(.ytp-fullscreen) .ytp-gradient-bottom {
+  opacity: 1 !important;
+  display: block !important;
+}
+
+/* Prevent autohide behavior when not in fullscreen */
+.html5-video-player:not(.ytp-fullscreen).ytp-autohide .ytp-chrome-bottom {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+.html5-video-player:not(.ytp-fullscreen).ytp-autohide .ytp-gradient-bottom {
+  opacity: 1 !important;
+}
