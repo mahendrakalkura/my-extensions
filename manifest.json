@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "My Extensions",
   "version": "1.0",
-  "description": "Screenshot any element, expand content, summarize pages with Claude AI, and always show YouTube controls",
+  "description": "Screenshot any element, expand content, and summarize pages with AI services",
   "permissions": [
     "activeTab",
     "scripting",
@@ -24,13 +24,5 @@
   },
   "background": {
     "service_worker": "background.js"
-  },
-  "content_scripts": [
-    {
-      "matches": ["*://*.youtube.com/*"],
-      "css": ["youtube.css"],
-      "js": ["youtube.js"],
-      "run_at": "document_start"
-    }
-  ]
+  }
 }
