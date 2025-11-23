@@ -88,6 +88,16 @@
 
   const extractContent = async () => {
     try {
+      const aiService = window.__summarizeAIService || 'claude';
+      const serviceNames = {
+        claude: 'Claude',
+        deepseek: 'DeepSeek',
+        gemini: 'Gemini',
+        grok: 'Grok',
+        openai: 'OpenAI',
+        qwen: 'Qwen'
+      };
+
       let content = '';
 
       if (isYouTube()) {
@@ -110,11 +120,12 @@
 
       // Store content in chrome.storage
       chrome.storage.local.set({ summarizeContent: content }, () => {
-        showNotification('Opening Claude.ai...', '#4CAF50');
+        showNotification(`Opening ${serviceNames[aiService] || 'AI'}...`, '#4CAF50');
 
-        // Open Claude.ai in a new tab
+        // Open AI service in a new tab
         chrome.runtime.sendMessage({
-          action: 'openClaudeAI'
+          action: 'openAI',
+          service: aiService
         });
       });
     } catch (error) {
