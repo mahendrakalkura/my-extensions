@@ -92,10 +92,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const urls = {
       claude: 'https://claude.ai/new',
       deepseek: 'https://chat.deepseek.com/',
-      gemini: 'https://gemini.google.com/app',
-      grok: 'https://x.com/i/grok',
+      gemini: 'https://gemini.google.com/u/2/app',
+      grok: 'https://grok.com/',
       openai: 'https://chat.openai.com/',
-      qwen: 'https://tongyi.aliyun.com/qianwen/'
+      qwen: 'https://chat.qwen.ai/'
     };
 
     const url = urls[request.service] || urls.claude;

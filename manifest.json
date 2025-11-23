@@ -14,9 +14,10 @@
     "*://*.claude.ai/*",
     "*://*.deepseek.com/*",
     "*://gemini.google.com/*",
-    "*://x.com/*",
+    "*://grok.com/*",
     "*://*.openai.com/*",
-    "*://*.aliyun.com/*"
+    "*://chatgpt.com/*",
+    "*://*.qwen.ai/*"
   ],
   "action": {
     "default_title": "Take screenshot"
