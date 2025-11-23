@@ -2,11 +2,16 @@
   "manifest_version": 3,
   "name": "My Extensions",
   "version": "1.0",
-  "description": "Screenshot any element on a webpage and always show YouTube controls",
+  "description": "Screenshot any element, expand content, summarize pages with Claude AI, and always show YouTube controls",
   "permissions": [
     "activeTab",
     "scripting",
-    "contextMenus"
+    "contextMenus",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "*://*.claude.ai/*"
   ],
   "action": {
     "default_title": "Take screenshot"
