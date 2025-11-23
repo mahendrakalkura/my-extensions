@@ -72,10 +72,10 @@
             'button[type="submit"]'
           ],
           grok: [
-            'button:has(svg)',
+            'button[type="submit"][aria-label="Submit"]',
+            'button[aria-label="Submit"]',
             'button[type="submit"]',
-            'button[aria-label*="Send"]',
-            'button[data-testid*="send"]'
+            'button:has(svg)'
           ],
           openai: [
             'button[data-testid="send-button"]',
