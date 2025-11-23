@@ -19,9 +19,28 @@
       });
 
     if (showTranscriptButton) {
+      // Prevent scrolling by temporarily disabling it
+      const originalOverflow = document.documentElement.style.overflow;
+      const originalPosition = document.documentElement.style.position;
+      const originalTop = document.documentElement.style.top;
+
+      // Lock scroll position
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.position = 'fixed';
+      document.documentElement.style.top = `-${scrollY}px`;
+      document.documentElement.style.width = '100%';
+
+      // Click the button
       showTranscriptButton.click();
+
       // Wait for transcript panel to load
       await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Restore original styles
+      document.documentElement.style.overflow = originalOverflow;
+      document.documentElement.style.position = originalPosition;
+      document.documentElement.style.top = originalTop;
+      document.documentElement.style.width = '';
 
       // Restore scroll position
       window.scrollTo(scrollX, scrollY);
