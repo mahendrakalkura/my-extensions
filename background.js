@@ -9,6 +9,11 @@ chrome.runtime.onInstalled.addListener(() => {
     title: 'Expand all content',
     contexts: ['page']
   });
+  chrome.contextMenus.create({
+    id: 'summarize',
+    title: 'Summarize',
+    contexts: ['page']
+  });
 });
 
 const activateScreenshot = (tabId) => {
@@ -23,6 +28,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     activateScreenshot(tab.id);
   } else if (info.menuItemId === 'auto-expand') {
     chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['auto-expand.js'] });
+  } else if (info.menuItemId === 'summarize') {
+    chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['summarize.js'] });
   }
 });
 
@@ -36,5 +43,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ success: true, dataUrl });
     });
     return true;
+  } else if (request.action === 'openClaudeAI') {
+    chrome.tabs.create({ url: 'https://claude.ai/new' }, (tab) => {
+      // Wait for the tab to load, then inject the handler script
+      chrome.tabs.onUpdated.addListener(function listener(tabId, changeInfo) {
+        if (tabId === tab.id && changeInfo.status === 'complete') {
+          chrome.tabs.onUpdated.removeListener(listener);
+          chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['claude-ai-handler.js']
+          });
+        }
+      });
+    });
   }
 });
