@@ -6,6 +6,10 @@
   };
 
   const getYouTubeTranscript = async () => {
+    // Save current scroll position
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+
     // First, try to find and click the "Show transcript" button
     const showTranscriptButton = Array.from(document.querySelectorAll('button, [role="button"]'))
       .find(el => {
@@ -18,6 +22,9 @@
       showTranscriptButton.click();
       // Wait for transcript panel to load
       await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Restore scroll position
+      window.scrollTo(scrollX, scrollY);
     }
 
     // Try to find transcript segments
@@ -103,24 +110,24 @@
 
       let content = '';
       let isTranscript = false;
+      const isYT = isYouTube();
 
-      if (isYouTube()) {
-        showNotification('Extracting YouTube transcript...', '#2196F3');
+      if (isYT) {
+        // Silent extraction for YouTube
         content = await getYouTubeTranscript();
 
         if (content) {
           isTranscript = true;
         } else {
-          showNotification('No transcript found, extracting page text...', '#FF9800');
           content = getAllPageText();
         }
       } else {
-        showNotification('Extracting page text...', '#2196F3');
+        // Silent extraction for all pages
         content = getAllPageText();
       }
 
       if (!content || content.length < 10) {
-        showNotification('Failed to extract content', '#f44336');
+        // Silently fail - no notifications
         return;
       }
 
@@ -150,9 +157,7 @@ URL: ${pageUrl}
 
       // Store content in chrome.storage
       chrome.storage.local.set({ summarizeContent: fullContent }, () => {
-        showNotification(`Opening ${serviceNames[aiService] || 'AI'}...`, '#4CAF50');
-
-        // Open AI service in a new tab
+        // Open AI service in a new tab silently
         chrome.runtime.sendMessage({
           action: 'openAI',
           service: aiService
@@ -160,7 +165,7 @@ URL: ${pageUrl}
       });
     } catch (error) {
       console.error('Error extracting content:', error);
-      showNotification('Error extracting content', '#f44336');
+      // Silently fail - no notifications
     }
   };
 
