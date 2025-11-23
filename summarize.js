@@ -6,6 +6,10 @@
   };
 
   const getYouTubeTranscript = async () => {
+    // Save current scroll position
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+
     // First, try to find and click the "Show transcript" button
     const showTranscriptButton = Array.from(document.querySelectorAll('button, [role="button"]'))
       .find(el => {
@@ -15,9 +19,31 @@
       });
 
     if (showTranscriptButton) {
+      // Prevent scrolling by temporarily disabling it
+      const originalOverflow = document.documentElement.style.overflow;
+      const originalPosition = document.documentElement.style.position;
+      const originalTop = document.documentElement.style.top;
+
+      // Lock scroll position
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.position = 'fixed';
+      document.documentElement.style.top = `-${scrollY}px`;
+      document.documentElement.style.width = '100%';
+
+      // Click the button
       showTranscriptButton.click();
+
       // Wait for transcript panel to load
       await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Restore original styles
+      document.documentElement.style.overflow = originalOverflow;
+      document.documentElement.style.position = originalPosition;
+      document.documentElement.style.top = originalTop;
+      document.documentElement.style.width = '';
+
+      // Restore scroll position
+      window.scrollTo(scrollX, scrollY);
     }
 
     // Try to find transcript segments
@@ -98,31 +124,59 @@
         qwen: 'Qwen'
       };
 
-      let content = '';
+      const pageTitle = document.title;
+      const pageUrl = window.location.href;
 
-      if (isYouTube()) {
-        showNotification('Extracting YouTube transcript...', '#2196F3');
+      let content = '';
+      let isTranscript = false;
+      const isYT = isYouTube();
+
+      if (isYT) {
+        // Silent extraction for YouTube
         content = await getYouTubeTranscript();
 
-        if (!content) {
-          showNotification('No transcript found, extracting page text...', '#FF9800');
+        if (content) {
+          isTranscript = true;
+        } else {
           content = getAllPageText();
         }
       } else {
-        showNotification('Extracting page text...', '#2196F3');
+        // Silent extraction for all pages
         content = getAllPageText();
       }
 
       if (!content || content.length < 10) {
-        showNotification('Failed to extract content', '#f44336');
+        // Silently fail - no notifications
         return;
       }
 
-      // Store content in chrome.storage
-      chrome.storage.local.set({ summarizeContent: content }, () => {
-        showNotification(`Opening ${serviceNames[aiService] || 'AI'}...`, '#4CAF50');
+      // Create prompt header
+      let prompt = '';
+      if (isYouTube() && isTranscript) {
+        prompt = `Summarize the following transcript in a clear and concise way. Capture all the key insights, arguments, and takeaways while removing filler. Break the summary into well-structured bullet points or sections by theme/topic. The goal is to help me understand everything important without reading the whole transcript. Think like a researcher or note-taker summarizing for someone smart but busy. Keep the summary accurate, complete, and easy to scan.
 
-        // Open AI service in a new tab
+Title: ${pageTitle}
+URL: ${pageUrl}
+
+---
+
+`;
+      } else {
+        prompt = `Summarize the following page content in a clear and concise way. Capture all the key insights, main points, and important information. Break the summary into well-structured bullet points or sections by theme/topic. The goal is to help me understand the essential content without reading the entire page. Think like a researcher or note-taker summarizing for someone smart but busy. Keep the summary accurate, complete, and easy to scan.
+
+Title: ${pageTitle}
+URL: ${pageUrl}
+
+---
+
+`;
+      }
+
+      const fullContent = prompt + content;
+
+      // Store content in chrome.storage
+      chrome.storage.local.set({ summarizeContent: fullContent }, () => {
+        // Open AI service in a new tab silently
         chrome.runtime.sendMessage({
           action: 'openAI',
           service: aiService
@@ -130,7 +184,7 @@
       });
     } catch (error) {
       console.error('Error extracting content:', error);
-      showNotification('Error extracting content', '#f44336');
+      // Silently fail - no notifications
     }
   };
 

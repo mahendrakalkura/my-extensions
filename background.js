@@ -10,44 +10,33 @@ chrome.runtime.onInstalled.addListener(() => {
     contexts: ['page']
   });
   chrome.contextMenus.create({
-    id: 'summarize',
-    title: 'Summarize',
-    contexts: ['page']
-  });
-  chrome.contextMenus.create({
     id: 'summarize-claude',
-    parentId: 'summarize',
-    title: 'Claude',
+    title: 'Summarize with Claude',
     contexts: ['page']
   });
   chrome.contextMenus.create({
     id: 'summarize-deepseek',
-    parentId: 'summarize',
-    title: 'DeepSeek',
+    title: 'Summarize with DeepSeek',
     contexts: ['page']
   });
   chrome.contextMenus.create({
     id: 'summarize-gemini',
-    parentId: 'summarize',
-    title: 'Gemini',
+    title: 'Summarize with Gemini',
     contexts: ['page']
   });
   chrome.contextMenus.create({
     id: 'summarize-grok',
-    parentId: 'summarize',
-    title: 'Grok',
+    title: 'Summarize with Grok',
     contexts: ['page']
   });
   chrome.contextMenus.create({
     id: 'summarize-openai',
-    parentId: 'summarize',
-    title: 'OpenAI',
+    title: 'Summarize with OpenAI',
     contexts: ['page']
   });
   chrome.contextMenus.create({
     id: 'summarize-qwen',
-    parentId: 'summarize',
-    title: 'Qwen',
+    title: 'Summarize with Qwen',
     contexts: ['page']
   });
 });

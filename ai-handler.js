@@ -72,9 +72,10 @@
             'button[type="submit"]'
           ],
           grok: [
-            'button[aria-label*="Send"]',
-            'button[data-testid*="send"]',
-            'button:has(svg[data-testid*="send"])'
+            'button[type="submit"][aria-label="Submit"]',
+            'button[aria-label="Submit"]',
+            'button[type="submit"]',
+            'button:has(svg)'
           ],
           openai: [
             'button[data-testid="send-button"]',
@@ -130,7 +131,8 @@
         }
 
         // Wait a moment for the UI to update
-        await new Promise(resolve => setTimeout(resolve, 800));
+        const waitTime = aiService === 'grok' ? 1200 : 800;
+        await new Promise(resolve => setTimeout(resolve, waitTime));
 
         // Find and click the submit button
         let submitButton = null;
@@ -148,6 +150,7 @@
                 const isEnabled = !button.disabled && !button.hasAttribute('disabled');
 
                 if (isVisible && isEnabled) {
+                  console.log('Found button with selector:', selector, button);
                   submitButton = button;
                   break;
                 }
@@ -187,14 +190,26 @@
 
         // Last resort: find any visible enabled button with an SVG icon
         if (!submitButton) {
+          console.log('Trying last resort button search...');
           const allButtons = document.querySelectorAll('button');
+          console.log('Total buttons found:', allButtons.length);
+
           for (const button of allButtons) {
             const rect = button.getBoundingClientRect();
             if (rect.width > 0 && rect.height > 0 && !button.disabled) {
               const hasSvg = button.querySelector('svg') !== null;
               const ariaLabel = button.getAttribute('aria-label')?.toLowerCase() || '';
+              const buttonClasses = button.className || '';
+
+              console.log('Checking button:', {
+                hasSvg,
+                ariaLabel,
+                classes: buttonClasses,
+                rect: { width: rect.width, height: rect.height }
+              });
 
               if (hasSvg || ariaLabel.includes('send')) {
+                console.log('Found button in last resort:', button);
                 submitButton = button;
                 break;
               }
@@ -204,6 +219,12 @@
 
         if (submitButton) {
           console.log('Found submit button:', submitButton);
+
+          // For Grok, add a small delay before clicking
+          if (aiService === 'grok') {
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+
           submitButton.click();
           console.log('Content pasted and submitted!');
 
