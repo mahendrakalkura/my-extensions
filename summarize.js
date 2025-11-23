@@ -98,13 +98,19 @@
         qwen: 'Qwen'
       };
 
+      const pageTitle = document.title;
+      const pageUrl = window.location.href;
+
       let content = '';
+      let isTranscript = false;
 
       if (isYouTube()) {
         showNotification('Extracting YouTube transcript...', '#2196F3');
         content = await getYouTubeTranscript();
 
-        if (!content) {
+        if (content) {
+          isTranscript = true;
+        } else {
           showNotification('No transcript found, extracting page text...', '#FF9800');
           content = getAllPageText();
         }
@@ -118,8 +124,32 @@
         return;
       }
 
+      // Create prompt header
+      let prompt = '';
+      if (isYouTube() && isTranscript) {
+        prompt = `Summarize the following transcript in a clear and concise way. Capture all the key insights, arguments, and takeaways while removing filler. Break the summary into well-structured bullet points or sections by theme/topic. The goal is to help me understand everything important without reading the whole transcript. Think like a researcher or note-taker summarizing for someone smart but busy. Keep the summary accurate, complete, and easy to scan.
+
+Title: ${pageTitle}
+URL: ${pageUrl}
+
+---
+
+`;
+      } else {
+        prompt = `Summarize the following page content in a clear and concise way. Capture all the key insights, main points, and important information. Break the summary into well-structured bullet points or sections by theme/topic. The goal is to help me understand the essential content without reading the entire page. Think like a researcher or note-taker summarizing for someone smart but busy. Keep the summary accurate, complete, and easy to scan.
+
+Title: ${pageTitle}
+URL: ${pageUrl}
+
+---
+
+`;
+      }
+
+      const fullContent = prompt + content;
+
       // Store content in chrome.storage
-      chrome.storage.local.set({ summarizeContent: content }, () => {
+      chrome.storage.local.set({ summarizeContent: fullContent }, () => {
         showNotification(`Opening ${serviceNames[aiService] || 'AI'}...`, '#4CAF50');
 
         // Open AI service in a new tab
