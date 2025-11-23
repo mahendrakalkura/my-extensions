@@ -11,7 +11,12 @@
     "tabs"
   ],
   "host_permissions": [
-    "*://*.claude.ai/*"
+    "*://*.claude.ai/*",
+    "*://*.deepseek.com/*",
+    "*://gemini.google.com/*",
+    "*://x.com/*",
+    "*://*.openai.com/*",
+    "*://*.aliyun.com/*"
   ],
   "action": {
     "default_title": "Take screenshot"

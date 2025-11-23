@@ -14,6 +14,42 @@ chrome.runtime.onInstalled.addListener(() => {
     title: 'Summarize',
     contexts: ['page']
   });
+  chrome.contextMenus.create({
+    id: 'summarize-claude',
+    parentId: 'summarize',
+    title: 'Claude',
+    contexts: ['page']
+  });
+  chrome.contextMenus.create({
+    id: 'summarize-deepseek',
+    parentId: 'summarize',
+    title: 'DeepSeek',
+    contexts: ['page']
+  });
+  chrome.contextMenus.create({
+    id: 'summarize-gemini',
+    parentId: 'summarize',
+    title: 'Gemini',
+    contexts: ['page']
+  });
+  chrome.contextMenus.create({
+    id: 'summarize-grok',
+    parentId: 'summarize',
+    title: 'Grok',
+    contexts: ['page']
+  });
+  chrome.contextMenus.create({
+    id: 'summarize-openai',
+    parentId: 'summarize',
+    title: 'OpenAI',
+    contexts: ['page']
+  });
+  chrome.contextMenus.create({
+    id: 'summarize-qwen',
+    parentId: 'summarize',
+    title: 'Qwen',
+    contexts: ['page']
+  });
 });
 
 const activateScreenshot = (tabId) => {
@@ -28,8 +64,17 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     activateScreenshot(tab.id);
   } else if (info.menuItemId === 'auto-expand') {
     chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['auto-expand.js'] });
-  } else if (info.menuItemId === 'summarize') {
-    chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['summarize.js'] });
+  } else if (info.menuItemId.startsWith('summarize-')) {
+    const service = info.menuItemId.replace('summarize-', '');
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: (aiService) => {
+        window.__summarizeAIService = aiService;
+      },
+      args: [service]
+    }).then(() => {
+      chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['summarize.js'] });
+    });
   }
 });
 
@@ -43,15 +88,34 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ success: true, dataUrl });
     });
     return true;
-  } else if (request.action === 'openClaudeAI') {
-    chrome.tabs.create({ url: 'https://claude.ai/new' }, (tab) => {
+  } else if (request.action === 'openAI') {
+    const urls = {
+      claude: 'https://claude.ai/new',
+      deepseek: 'https://chat.deepseek.com/',
+      gemini: 'https://gemini.google.com/app',
+      grok: 'https://x.com/i/grok',
+      openai: 'https://chat.openai.com/',
+      qwen: 'https://tongyi.aliyun.com/qianwen/'
+    };
+
+    const url = urls[request.service] || urls.claude;
+
+    chrome.tabs.create({ url }, (tab) => {
       // Wait for the tab to load, then inject the handler script
       chrome.tabs.onUpdated.addListener(function listener(tabId, changeInfo) {
         if (tabId === tab.id && changeInfo.status === 'complete') {
           chrome.tabs.onUpdated.removeListener(listener);
           chrome.scripting.executeScript({
             target: { tabId: tab.id },
-            files: ['claude-ai-handler.js']
+            func: (service) => {
+              window.__aiService = service;
+            },
+            args: [request.service]
+          }).then(() => {
+            chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              files: ['ai-handler.js']
+            });
           });
         }
       });
