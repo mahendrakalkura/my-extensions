@@ -24,5 +24,12 @@
   },
   "background": {
     "service_worker": "background.js"
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.atlassian.net/*"],
+      "css": ["atlassian.css"],
+      "run_at": "document_start"
+    }
+  ]
 }
