@@ -16,7 +16,3 @@
 	pointer-events: none !important;
 	z-index: 999998 !important;
 }
-
-img[data-testid="platform-board-kit.ui.card.card-cover.card-cover-image"] {
-	display: none !important;
-}
