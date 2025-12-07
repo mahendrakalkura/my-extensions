@@ -30,6 +30,11 @@
       "matches": ["*://*.atlassian.net/*"],
       "css": ["atlassian.css"],
       "run_at": "document_start"
+    },
+    {
+      "matches": ["*://*.imdb.com/*"],
+      "css": ["imdb.css"],
+      "run_at": "document_start"
     }
   ]
 }
