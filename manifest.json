@@ -12,7 +12,7 @@
         "optional": [],
         "required": ["none"]
       },
-      "id": "my-extensions@mahendrakalkura"
+      "id": "my-extensions-1@mahendrakalkura"
     }
   },
   "content_scripts": [
