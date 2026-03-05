@@ -25,11 +25,6 @@ chrome.runtime.onInstalled.addListener(() => {
     contexts: ['page']
   });
   chrome.contextMenus.create({
-    id: 'summarize-grok',
-    title: 'Summarize with Grok',
-    contexts: ['page']
-  });
-  chrome.contextMenus.create({
     id: 'summarize-openai',
     title: 'Summarize with OpenAI',
     contexts: ['page']
@@ -37,6 +32,11 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'summarize-qwen',
     title: 'Summarize with Qwen',
+    contexts: ['page']
+  });
+  chrome.contextMenus.create({
+    id: 'summarize-z.ai',
+    title: 'Summarize with z.ai',
     contexts: ['page']
   });
 });
@@ -82,9 +82,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       claude: 'https://claude.ai/new',
       deepseek: 'https://chat.deepseek.com/',
       gemini: 'https://gemini.google.com/u/2/app',
-      grok: 'https://grok.com/',
       openai: 'https://chat.openai.com/',
-      qwen: 'https://chat.qwen.ai/'
+      qwen: 'https://chat.qwen.ai/',
+      'z.ai': 'https://chat.z.ai/'
     };
 
     const url = urls[request.service] || urls.claude;

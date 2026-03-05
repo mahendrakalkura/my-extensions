@@ -119,9 +119,9 @@
         claude: 'Claude',
         deepseek: 'DeepSeek',
         gemini: 'Gemini',
-        grok: 'Grok',
         openai: 'OpenAI',
-        qwen: 'Qwen'
+        qwen: 'Qwen',
+        'z.ai': 'z.ai'
       };
 
       const pageTitle = document.title;

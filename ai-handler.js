@@ -37,12 +37,6 @@
             '.ql-editor',
             'textarea'
           ],
-          grok: [
-            'textarea',
-            'div[contenteditable="true"]',
-            '[role="textbox"]',
-            'input[type="text"]'
-          ],
           openai: [
             '#prompt-textarea',
             'textarea[placeholder*="Message"]',
@@ -54,6 +48,13 @@
             'textarea',
             'div[contenteditable="true"]',
             '[role="textbox"]'
+          ],
+          'z.ai': [
+            '#chat-input',
+            'textarea',
+            'div[contenteditable="true"]',
+            '[role="textbox"]',
+            'input[type="text"]'
           ]
         };
 
@@ -71,12 +72,6 @@
             'button[aria-label*="Send"]',
             'button[type="submit"]'
           ],
-          grok: [
-            'button[type="submit"][aria-label="Submit"]',
-            'button[aria-label="Submit"]',
-            'button[type="submit"]',
-            'button:has(svg)'
-          ],
           openai: [
             'button[data-testid="send-button"]',
             'button[aria-label*="Send"]'
@@ -85,6 +80,13 @@
             'button svg',
             'button:has(svg)',
             'button[class*="send"]'
+          ],
+          'z.ai': [
+            '#send-message-button',
+            'button[type="submit"][aria-label="Submit"]',
+            'button[aria-label="Submit"]',
+            'button[type="submit"]',
+            'button:has(svg)'
           ]
         };
 
@@ -131,7 +133,7 @@
         }
 
         // Wait a moment for the UI to update
-        const waitTime = aiService === 'grok' ? 1200 : 800;
+        const waitTime = aiService === 'z.ai' ? 1200 : 800;
         await new Promise(resolve => setTimeout(resolve, waitTime));
 
         // Find and click the submit button
@@ -220,8 +222,8 @@
         if (submitButton) {
           console.log('Found submit button:', submitButton);
 
-          // For Grok, add a small delay before clicking
-          if (aiService === 'grok') {
+          // For z.ai, add a small delay before clicking
+          if (aiService === 'z.ai') {
             await new Promise(resolve => setTimeout(resolve, 300));
           }
 
