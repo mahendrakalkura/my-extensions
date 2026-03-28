@@ -46,44 +46,15 @@
       window.scrollTo(scrollX, scrollY);
     }
 
-    // Try to find transcript segments
-    const transcriptSelectors = [
-      'ytd-transcript-segment-renderer',
-      '[class*="transcript"] [class*="segment"]',
-      '#transcript-scrollbox',
-    ];
-
-    for (const selector of transcriptSelectors) {
-      const transcriptContainer = document.querySelector(selector)?.closest('ytd-engagement-panel-section-list-renderer, [id*="transcript"]')
-        || document.querySelector(selector)?.parentElement?.parentElement;
-
-      if (transcriptContainer) {
-        const segments = transcriptContainer.querySelectorAll('ytd-transcript-segment-renderer, [class*="segment"]');
-        if (segments.length > 0) {
-          const transcriptText = Array.from(segments)
-            .map(segment => {
-              const textElement = segment.querySelector('[class*="text"], .segment-text, yt-formatted-string');
-              return textElement?.textContent?.trim() || segment.textContent?.trim();
-            })
-            .filter(text => text && text.length > 0)
-            .join(' ');
-
-          if (transcriptText) {
-            return transcriptText;
-          }
-        }
-      }
-    }
-
-    // Fallback: try to get any transcript text from the page
-    const transcriptPanel = document.querySelector('#panels ytd-engagement-panel-section-list-renderer[target-id*="transcript"]');
-    if (transcriptPanel) {
-      const text = transcriptPanel.textContent
-        ?.replace(/\d+:\d+/g, '') // Remove timestamps
-        ?.replace(/\s+/g, ' ')
-        ?.trim();
-      if (text && text.length > 100) {
-        return text;
+    // Extract text from transcript segments (new YouTube UI)
+    const segments = document.querySelectorAll('transcript-segment-view-model .yt-core-attributed-string');
+    if (segments.length > 0) {
+      const transcriptText = Array.from(segments)
+        .map(el => el.textContent?.trim())
+        .filter(text => text && text.length > 0)
+        .join(' ');
+      if (transcriptText) {
+        return transcriptText;
       }
     }
 
