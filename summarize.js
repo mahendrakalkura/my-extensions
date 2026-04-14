@@ -5,61 +5,70 @@
     return window.location.hostname.includes('youtube.com');
   };
 
+  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
   const getYouTubeTranscript = async () => {
-    // Save current scroll position
-    const scrollX = window.scrollX;
-    const scrollY = window.scrollY;
+    const transcriptTextSelectors = [
+      'transcript-segment-view-model .ytAttributedStringHost',
+      'transcript-segment-view-model .yt-core-attributed-string',
+      'ytd-transcript-segment-renderer yt-formatted-string.segment-text'
+    ];
+    const transcriptPanelSelectors = [
+      'ytd-engagement-panel-section-list-renderer[target-id="PAmodern_transcript_view"][visibility="ENGAGEMENT_PANEL_VISIBILITY_EXPANDED"]',
+      'ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-searchable-transcript"][visibility="ENGAGEMENT_PANEL_VISIBILITY_EXPANDED"]'
+    ];
 
-    // First, try to find and click the "Show transcript" button
-    const showTranscriptButton = Array.from(document.querySelectorAll('button, [role="button"]'))
-      .find(el => {
-        const text = el.textContent?.trim().toLowerCase() || '';
-        const ariaLabel = el.getAttribute('aria-label')?.toLowerCase() || '';
-        return text.includes('transcript') || ariaLabel.includes('transcript') || text === 'show transcript';
-      });
+    const getTranscriptText = () => {
+      const texts = Array.from(document.querySelectorAll(transcriptTextSelectors.join(', ')))
+        .map(el => el.textContent?.trim())
+        .filter(text => text && text.length > 0);
 
-    if (showTranscriptButton) {
-      // Prevent scrolling by temporarily disabling it
-      const originalOverflow = document.documentElement.style.overflow;
-      const originalPosition = document.documentElement.style.position;
-      const originalTop = document.documentElement.style.top;
+      return texts.length > 0 ? texts.join(' ') : null;
+    };
 
-      // Lock scroll position
-      document.documentElement.style.overflow = 'hidden';
-      document.documentElement.style.position = 'fixed';
-      document.documentElement.style.top = `-${scrollY}px`;
-      document.documentElement.style.width = '100%';
+    const isTranscriptPanelOpen = () => {
+      return transcriptPanelSelectors.some(selector => document.querySelector(selector));
+    };
 
-      // Click the button
-      showTranscriptButton.click();
+    const findTranscriptButton = () => {
+      return document.querySelector('button[aria-label="Show transcript"]') ||
+        Array.from(document.querySelectorAll('button, [role="button"]'))
+          .find(el => {
+            const text = el.textContent?.trim().toLowerCase() || '';
+            const ariaLabel = el.getAttribute('aria-label')?.toLowerCase() || '';
+            return text.includes('transcript') || ariaLabel.includes('transcript');
+          });
+    };
 
-      // Wait for transcript panel to load
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Restore original styles
-      document.documentElement.style.overflow = originalOverflow;
-      document.documentElement.style.position = originalPosition;
-      document.documentElement.style.top = originalTop;
-      document.documentElement.style.width = '';
-
-      // Restore scroll position
-      window.scrollTo(scrollX, scrollY);
+    const existingTranscript = getTranscriptText();
+    if (existingTranscript) {
+      return existingTranscript;
     }
 
-    // Extract text from transcript segments (new YouTube UI)
-    const segments = document.querySelectorAll('transcript-segment-view-model .yt-core-attributed-string');
-    if (segments.length > 0) {
-      const transcriptText = Array.from(segments)
-        .map(el => el.textContent?.trim())
-        .filter(text => text && text.length > 0)
-        .join(' ');
+    const transcriptButton = findTranscriptButton();
+    if (transcriptButton && !isTranscriptPanelOpen()) {
+      transcriptButton.click();
+    }
+
+    const maxWait = 5000;
+    const start = Date.now();
+    while (Date.now() - start < maxWait) {
+      const transcriptText = getTranscriptText();
       if (transcriptText) {
         return transcriptText;
       }
+
+      if (!isTranscriptPanelOpen()) {
+        const retryButton = findTranscriptButton();
+        if (retryButton) {
+          retryButton.click();
+        }
+      }
+
+      await sleep(200);
     }
 
-    // If no transcript found, return null
-    return null;
+    return getTranscriptText();
   };
 
   const getAllPageText = () => {
