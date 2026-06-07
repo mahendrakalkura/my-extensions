@@ -10,6 +10,12 @@ chrome.runtime.onInstalled.addListener(() => {
     title: "Expand all content",
   });
   chrome.contextMenus.create({
+    contexts: ["link"],
+    id: "open-in-invidious",
+    targetUrlPatterns: ["*://*.youtube.com/shorts/*", "*://*.youtube.com/watch*", "*://youtu.be/*"],
+    title: "Open in Invidious",
+  });
+  chrome.contextMenus.create({
     contexts: ["page"],
     id: "summarize-claude",
     title: "Summarize with Claude",
@@ -58,6 +64,19 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     activateScreenshot(tab.id);
   } else if (info.menuItemId === "auto-expand") {
     chrome.scripting.executeScript({ files: ["auto-expand.js"], target: { tabId: tab.id } });
+  } else if (info.menuItemId === "open-in-invidious") {
+    const url = new URL(info.linkUrl);
+    let videoId = "";
+    if (url.hostname === "youtu.be") {
+      videoId = url.pathname.split("/")[1];
+    } else if (url.pathname.startsWith("/shorts/")) {
+      videoId = url.pathname.split("/")[2];
+    } else {
+      videoId = url.searchParams.get("v");
+    }
+    if (videoId) {
+      chrome.tabs.create({ url: `https://redirect.invidious.io/watch?v=${videoId}` });
+    }
   } else if (info.menuItemId.startsWith("summarize-")) {
     const service = info.menuItemId.replace("summarize-", "");
     chrome.scripting
