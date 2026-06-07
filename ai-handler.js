@@ -1,251 +1,358 @@
 (() => {
   'use strict';
 
-  const pasteAndSubmit = async () => {
+  // Guard against double-injection into the same document (the background
+  // script re-injects on every load completion).
+  if (window.__aiHandlerActive) {
+    console.log('[ai-handler] already running, skipping');
+    return;
+  }
+  window.__aiHandlerActive = true;
+
+  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+  // Poll fn() every `interval` ms until it returns a truthy value or `timeout` ms elapse.
+  const pollFor = async (fn, timeout, interval = 250) => {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      const result = fn();
+      if (result) return result;
+      await sleep(interval);
+    }
+    return fn() || null;
+  };
+
+  // Different selectors for different AI services
+  const inputSelectors = {
+    claude: [
+      'div[contenteditable="true"]',
+      '[role="textbox"]',
+      '.ProseMirror',
+      'textarea'
+    ],
+    deepseek: [
+      'textarea[placeholder*="消息"]',
+      'textarea',
+      'div[contenteditable="true"]',
+      '[role="textbox"]'
+    ],
+    gemini: [
+      'div[contenteditable="true"]',
+      '[role="textbox"]',
+      '.ql-editor',
+      'textarea'
+    ],
+    kimi: [
+      'div[contenteditable="true"]',
+      '[role="textbox"]',
+      'textarea'
+    ],
+    openai: [
+      '#prompt-textarea',
+      'textarea[placeholder*="Message"]',
+      'textarea',
+      'div[contenteditable="true"]'
+    ],
+    qwen: [
+      'textarea[placeholder*="向"]',
+      'textarea',
+      'div[contenteditable="true"]',
+      '[role="textbox"]'
+    ],
+    'z.ai': [
+      '#chat-input',
+      'textarea',
+      'div[contenteditable="true"]',
+      '[role="textbox"]',
+      'input[type="text"]'
+    ]
+  };
+
+  const buttonSelectors = {
+    claude: [
+      'button[aria-label*="Send"]',
+      'button[type="submit"]'
+    ],
+    deepseek: [
+      'button[class*="send"]',
+      'button svg[class*="icon"]',
+      'button:has(svg)'
+    ],
+    gemini: [
+      'button[aria-label*="Send"]',
+      'button[type="submit"]'
+    ],
+    kimi: [
+      '.send-button-container',
+      'div[class*="send-button-container"]'
+    ],
+    openai: [
+      'button[data-testid="send-button"]',
+      'button[aria-label*="Send"]'
+    ],
+    qwen: [
+      'button svg',
+      'button:has(svg)',
+      'button[class*="send"]'
+    ],
+    'z.ai': [
+      '#send-message-button',
+      'button[type="submit"][aria-label="Submit"]',
+      'button[aria-label="Submit"]',
+      'button[type="submit"]',
+      'button:has(svg)'
+    ]
+  };
+
+  const findInput = (selectors) => {
+    for (const selector of selectors) {
+      const inputField = document.querySelector(selector);
+      if (inputField) return inputField;
+    }
+    return null;
+  };
+
+  const getInputText = (inputField) => {
+    if (typeof inputField.value === 'string' && inputField.value) {
+      return inputField.value;
+    }
+    return inputField.textContent || '';
+  };
+
+  const setInputValue = (inputField, content) => {
+    // Focus on the input field
+    inputField.focus();
+    inputField.click();
+
+    if (inputField.contentEditable === 'true') {
+      // For contenteditable divs.
+      // Clear any leftover text from a previous attempt before inserting.
+      document.execCommand('selectAll', false, null);
+
+      // Try execCommand first as it works best with rich text editors (Lexical, Draft.js, etc.)
+      const pasted = document.execCommand('insertText', false, content);
+
+      if (!pasted) {
+        // Fallback: dispatch a paste event (works for Vue-based editors like Kimi)
+        const dt = new DataTransfer();
+        dt.setData('text/plain', content);
+        const pasteEvent = new ClipboardEvent('paste', {
+          clipboardData: dt,
+          bubbles: true,
+          cancelable: true
+        });
+        const handled = !inputField.dispatchEvent(pasteEvent);
+
+        if (!handled) {
+          inputField.textContent = content;
+        }
+      }
+
+      // Trigger input event to make sure the UI updates
+      inputField.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+      inputField.dispatchEvent(new Event('change', { bubbles: true }));
+      inputField.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: content }));
+    } else {
+      // For textarea/input elements
+      // Use native setter to bypass React/Vue value tracking
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+      nativeInputValueSetter.call(inputField, content);
+
+      // Trigger input event to make sure the UI updates. Enter is dispatched
+      // later, in the submit phase, so pasting can never submit prematurely.
+      inputField.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+      inputField.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  };
+
+  const dispatchEnter = (inputField) => {
+    inputField.focus();
+    inputField.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, code: 'Enter', key: 'Enter' }));
+    inputField.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, cancelable: true, code: 'Enter', key: 'Enter' }));
+  };
+
+  // Find a visible, enabled submit button. The last-resort tier matches any
+  // icon button on the page, so it only runs when explicitly allowed -
+  // otherwise polling for the send button to enable would return a wrong
+  // button on the first check.
+  const findSubmitButton = (inputField, btnSelectors, allowLastResort) => {
+    // First try service-specific selectors
+    for (const selector of btnSelectors) {
+      try {
+        const elements = document.querySelectorAll(selector);
+        for (const el of elements) {
+          // Check if it's a button or has a button parent, or if it's Kimi's div button
+          const button = el.tagName === 'BUTTON' ? el : (el.closest('button') || el);
+          if (button) {
+            const rect = button.getBoundingClientRect();
+            const isVisible = rect.width > 0 && rect.height > 0 && button.offsetParent !== null;
+            // For Kimi, check that it doesn't have the 'disabled' class
+            const isKimiDisabled = button.classList && button.classList.contains('disabled');
+            const isEnabled = !button.disabled && !button.hasAttribute('disabled') && !isKimiDisabled && button.getAttribute('aria-disabled') !== 'true';
+
+            if (isVisible && isEnabled) {
+              return button;
+            }
+          }
+        }
+      } catch (e) {
+        console.log('[ai-handler] selector failed:', selector, e);
+      }
+    }
+
+    // If still not found, look for buttons near the input field
+    const inputParent = inputField.closest('form') || inputField.parentElement?.parentElement;
+    if (inputParent) {
+      const nearbyButtons = inputParent.querySelectorAll('button');
+      for (const button of nearbyButtons) {
+        const rect = button.getBoundingClientRect();
+        const isVisible = rect.width > 0 && rect.height > 0;
+        const isEnabled = !button.disabled && button.getAttribute('aria-disabled') !== 'true';
+        const ariaLabel = button.getAttribute('aria-label')?.toLowerCase() || '';
+        const buttonText = button.textContent?.toLowerCase() || '';
+
+        if (isVisible && isEnabled && (
+          ariaLabel.includes('send') ||
+          buttonText.includes('send') ||
+          ariaLabel.includes('submit') ||
+          button.type === 'submit' ||
+          button.querySelector('svg')  // Has icon
+        )) {
+          return button;
+        }
+      }
+    }
+
+    if (!allowLastResort) return null;
+
+    // Last resort: find any visible enabled button with an SVG icon
+    const allButtons = document.querySelectorAll('button');
+    for (const button of allButtons) {
+      const rect = button.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0 && !button.disabled) {
+        const hasSvg = button.querySelector('svg') !== null;
+        const ariaLabel = button.getAttribute('aria-label')?.toLowerCase() || '';
+
+        if (hasSvg || ariaLabel.includes('send')) {
+          return button;
+        }
+      }
+    }
+
+    return null;
+  };
+
+  const trySend = async (selectors, btnSelectors, content, marker, aiService) => {
+    // Wait for the chat input to render (slow on cold SPA loads).
+    let inputField = await pollFor(() => findInput(selectors), 15000);
+    if (!inputField) {
+      console.error('[ai-handler] input field not found');
+      return false;
+    }
+
+    // Paste, then confirm the text actually stuck. On a cold load the SPA can
+    // replace the input node during hydration, wiping text set on the old
+    // node, so re-query a fresh node and re-paste until the live input holds it.
+    let stuck = false;
+    for (let i = 0; i < 6 && !stuck; i++) {
+      inputField = findInput(selectors) || inputField;
+      setInputValue(inputField, content);
+      await sleep(500);
+      inputField = findInput(selectors) || inputField;
+      stuck = getInputText(inputField).includes(marker);
+    }
+    if (!stuck) {
+      console.error('[ai-handler] pasted text did not stick');
+      return false;
+    }
+    console.log('[ai-handler] text pasted and confirmed in input');
+
+    // Wait for a real send button to enable before allowing the loosest
+    // selectors, which can match unrelated icon buttons.
+    let submitButton = await pollFor(() => findSubmitButton(inputField, btnSelectors, false), 5000);
+    if (!submitButton) {
+      console.log('[ai-handler] no strict button match, allowing last resort');
+      submitButton = findSubmitButton(inputField, btnSelectors, true);
+    }
+
+    // The message left the input once the marker text is gone from it.
+    const hasSent = () => {
+      const field = findInput(selectors);
+      if (!field) return null;
+      return getInputText(field).includes(marker) ? null : true;
+    };
+
+    // Click, confirm the message was actually sent, escalate if it was not:
+    // strict button -> loose button -> Enter key.
+    for (let i = 0; i < 3; i++) {
+      if (submitButton) {
+        if (aiService === 'z.ai') {
+          await sleep(300);
+        }
+        console.log('[ai-handler] clicking submit button:', submitButton);
+        submitButton.click();
+      } else {
+        console.log('[ai-handler] no submit button, pressing Enter');
+        dispatchEnter(findInput(selectors) || inputField);
+      }
+
+      const sent = await pollFor(hasSent, 3000, 300);
+      if (sent) return true;
+
+      console.log('[ai-handler] input still holds the text, escalating');
+      submitButton = i < 1 ? findSubmitButton(inputField, btnSelectors, true) : null;
+    }
+
+    console.error('[ai-handler] message did not send');
+    return false;
+  };
+
+  const MAX_ATTEMPTS = 3;
+
+  const run = async () => {
     try {
       const aiService = window.__aiService || 'claude';
 
       // Get the stored content
-      chrome.storage.local.get(['summarizeContent'], async (result) => {
-        const content = result.summarizeContent;
-
-        if (!content) {
-          console.error('No content found in storage');
-          return;
-        }
-
-        // Wait for the page to fully load
-        await new Promise(resolve => setTimeout(resolve, 2500));
-
-        // Different selectors for different AI services
-        const inputSelectors = {
-          claude: [
-            'div[contenteditable="true"]',
-            '[role="textbox"]',
-            '.ProseMirror',
-            'textarea'
-          ],
-          deepseek: [
-            'textarea[placeholder*="消息"]',
-            'textarea',
-            'div[contenteditable="true"]',
-            '[role="textbox"]'
-          ],
-          gemini: [
-            'div[contenteditable="true"]',
-            '[role="textbox"]',
-            '.ql-editor',
-            'textarea'
-          ],
-          openai: [
-            '#prompt-textarea',
-            'textarea[placeholder*="Message"]',
-            'textarea',
-            'div[contenteditable="true"]'
-          ],
-          qwen: [
-            'textarea[placeholder*="向"]',
-            'textarea',
-            'div[contenteditable="true"]',
-            '[role="textbox"]'
-          ],
-          'z.ai': [
-            '#chat-input',
-            'textarea',
-            'div[contenteditable="true"]',
-            '[role="textbox"]',
-            'input[type="text"]'
-          ]
-        };
-
-        const buttonSelectors = {
-          claude: [
-            'button[aria-label*="Send"]',
-            'button[type="submit"]'
-          ],
-          deepseek: [
-            'button[class*="send"]',
-            'button svg[class*="icon"]',
-            'button:has(svg)'
-          ],
-          gemini: [
-            'button[aria-label*="Send"]',
-            'button[type="submit"]'
-          ],
-          openai: [
-            'button[data-testid="send-button"]',
-            'button[aria-label*="Send"]'
-          ],
-          qwen: [
-            'button svg',
-            'button:has(svg)',
-            'button[class*="send"]'
-          ],
-          'z.ai': [
-            '#send-message-button',
-            'button[type="submit"][aria-label="Submit"]',
-            'button[aria-label="Submit"]',
-            'button[type="submit"]',
-            'button:has(svg)'
-          ]
-        };
-
-        const selectors = inputSelectors[aiService] || inputSelectors.claude;
-        const btnSelectors = buttonSelectors[aiService] || buttonSelectors.claude;
-
-        let inputField = null;
-        for (const selector of selectors) {
-          inputField = document.querySelector(selector);
-          if (inputField) break;
-        }
-
-        if (!inputField) {
-          console.error('Could not find input field');
-          // Try again after a delay
-          setTimeout(() => pasteAndSubmit(), 1000);
-          return;
-        }
-
-        // Focus on the input field
-        inputField.focus();
-        inputField.click();
-
-        // Paste the content
-        if (inputField.contentEditable === 'true') {
-          // For contenteditable divs
-          inputField.textContent = content;
-
-          // Trigger input event to make sure the UI updates
-          inputField.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-          inputField.dispatchEvent(new Event('change', { bubbles: true }));
-          inputField.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: content }));
-        } else {
-          // For textarea/input elements
-          // Use native setter to bypass React/Vue value tracking
-          const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
-          nativeInputValueSetter.call(inputField, content);
-
-          // Trigger all relevant events
-          inputField.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-          inputField.dispatchEvent(new Event('change', { bubbles: true }));
-          inputField.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'Enter' }));
-          inputField.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, cancelable: true, key: 'Enter' }));
-        }
-
-        // Wait a moment for the UI to update
-        const waitTime = aiService === 'z.ai' ? 1200 : 800;
-        await new Promise(resolve => setTimeout(resolve, waitTime));
-
-        // Find and click the submit button
-        let submitButton = null;
-
-        // First try service-specific selectors
-        for (const selector of btnSelectors) {
-          try {
-            const elements = document.querySelectorAll(selector);
-            for (const el of elements) {
-              // Check if it's a button or has a button parent
-              const button = el.tagName === 'BUTTON' ? el : el.closest('button');
-              if (button) {
-                const rect = button.getBoundingClientRect();
-                const isVisible = rect.width > 0 && rect.height > 0 && button.offsetParent !== null;
-                const isEnabled = !button.disabled && !button.hasAttribute('disabled');
-
-                if (isVisible && isEnabled) {
-                  console.log('Found button with selector:', selector, button);
-                  submitButton = button;
-                  break;
-                }
-              }
-            }
-          } catch (e) {
-            console.log('Selector failed:', selector, e);
-          }
-          if (submitButton) break;
-        }
-
-        // If still not found, look for buttons near the input field
-        if (!submitButton) {
-          const inputParent = inputField.closest('form') || inputField.parentElement?.parentElement;
-          if (inputParent) {
-            const nearbyButtons = inputParent.querySelectorAll('button');
-            for (const button of nearbyButtons) {
-              const rect = button.getBoundingClientRect();
-              const isVisible = rect.width > 0 && rect.height > 0;
-              const isEnabled = !button.disabled;
-              const ariaLabel = button.getAttribute('aria-label')?.toLowerCase() || '';
-              const buttonText = button.textContent?.toLowerCase() || '';
-
-              if (isVisible && isEnabled && (
-                ariaLabel.includes('send') ||
-                buttonText.includes('send') ||
-                ariaLabel.includes('submit') ||
-                button.type === 'submit' ||
-                button.querySelector('svg')  // Has icon
-              )) {
-                submitButton = button;
-                break;
-              }
-            }
-          }
-        }
-
-        // Last resort: find any visible enabled button with an SVG icon
-        if (!submitButton) {
-          console.log('Trying last resort button search...');
-          const allButtons = document.querySelectorAll('button');
-          console.log('Total buttons found:', allButtons.length);
-
-          for (const button of allButtons) {
-            const rect = button.getBoundingClientRect();
-            if (rect.width > 0 && rect.height > 0 && !button.disabled) {
-              const hasSvg = button.querySelector('svg') !== null;
-              const ariaLabel = button.getAttribute('aria-label')?.toLowerCase() || '';
-              const buttonClasses = button.className || '';
-
-              console.log('Checking button:', {
-                hasSvg,
-                ariaLabel,
-                classes: buttonClasses,
-                rect: { width: rect.width, height: rect.height }
-              });
-
-              if (hasSvg || ariaLabel.includes('send')) {
-                console.log('Found button in last resort:', button);
-                submitButton = button;
-                break;
-              }
-            }
-          }
-        }
-
-        if (submitButton) {
-          console.log('Found submit button:', submitButton);
-
-          // For z.ai, add a small delay before clicking
-          if (aiService === 'z.ai') {
-            await new Promise(resolve => setTimeout(resolve, 300));
-          }
-
-          submitButton.click();
-          console.log('Content pasted and submitted!');
-
-          // Clear the stored content
-          chrome.storage.local.remove(['summarizeContent']);
-        } else {
-          console.error('Could not find submit button');
-          console.log('Input field:', inputField);
-        }
+      const content = await new Promise(resolve => {
+        chrome.storage.local.get(['summarizeContent'], (result) => resolve(result.summarizeContent));
       });
+
+      if (!content) {
+        console.log('[ai-handler] no content in storage, nothing to do');
+        window.__aiHandlerActive = false;
+        return;
+      }
+
+      const marker = content.slice(0, 30);
+      const selectors = inputSelectors[aiService] || inputSelectors.claude;
+      const btnSelectors = buttonSelectors[aiService] || buttonSelectors.claude;
+
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        console.log(`[ai-handler] attempt ${attempt}/${MAX_ATTEMPTS} for ${aiService}`);
+        const sent = await trySend(selectors, btnSelectors, content, marker, aiService);
+        if (sent) {
+          console.log('[ai-handler] submitted successfully');
+          // Clear the stored content only after a verified send
+          chrome.storage.local.remove(['summarizeContent']);
+          window.__aiHandlerActive = false;
+          return;
+        }
+        await sleep(1000);
+      }
+
+      console.error('[ai-handler] giving up after', MAX_ATTEMPTS, 'attempts');
+      window.__aiHandlerActive = false;
     } catch (error) {
-      console.error('Error pasting content:', error);
+      console.error('[ai-handler] error:', error);
+      window.__aiHandlerActive = false;
     }
   };
 
   // Run when the page loads
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', pasteAndSubmit);
+    document.addEventListener('DOMContentLoaded', () => run());
   } else {
-    pasteAndSubmit();
+    run();
   }
 })();

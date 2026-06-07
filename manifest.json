@@ -31,6 +31,7 @@
   "host_permissions": [
     "*://*.claude.ai/*",
     "*://*.deepseek.com/*",
+    "*://*.kimi.com/*",
     "*://*.openai.com/*",
     "*://*.qwen.ai/*",
     "*://chat.z.ai/*",

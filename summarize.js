@@ -99,6 +99,7 @@
         claude: 'Claude',
         deepseek: 'DeepSeek',
         gemini: 'Gemini',
+        kimi: 'Kimi',
         openai: 'OpenAI',
         qwen: 'Qwen',
         'z.ai': 'z.ai'

@@ -26,6 +26,11 @@ chrome.runtime.onInstalled.addListener(() => {
   });
   chrome.contextMenus.create({
     contexts: ["page"],
+    id: "summarize-kimi",
+    title: "Summarize with Kimi",
+  });
+  chrome.contextMenus.create({
+    contexts: ["page"],
     id: "summarize-openai",
     title: "Summarize with OpenAI",
   });
@@ -84,6 +89,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       claude: "https://claude.ai/new",
       deepseek: "https://chat.deepseek.com/",
       gemini: "https://gemini.google.com/u/3/app",
+      kimi: "https://www.kimi.com/?chat_enter_method=new_chat",
       openai: "https://chat.openai.com/",
       qwen: "https://chat.qwen.ai/",
       "z.ai": "https://chat.z.ai/",
@@ -92,10 +98,12 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     const url = urls[request.service] || urls.claude;
 
     chrome.tabs.create({ url }, (tab) => {
-      // Wait for the tab to load, then inject the handler script
-      chrome.tabs.onUpdated.addListener(function listener(tabId, changeInfo) {
+      // Inject the handler on every load completion, not just the first: on a
+      // cold visit these SPAs can redirect or reload after the first
+      // "complete", which destroys the injected script. The handler guards
+      // against duplicate runs and exits when storage is empty.
+      const updatedListener = (tabId, changeInfo) => {
         if (tabId === tab.id && changeInfo.status === "complete") {
-          chrome.tabs.onUpdated.removeListener(listener);
           chrome.scripting
             .executeScript({
               args: [request.service],
@@ -111,7 +119,15 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
               });
             });
         }
-      });
+      };
+      const removedListener = (tabId) => {
+        if (tabId === tab.id) {
+          chrome.tabs.onRemoved.removeListener(removedListener);
+          chrome.tabs.onUpdated.removeListener(updatedListener);
+        }
+      };
+      chrome.tabs.onRemoved.addListener(removedListener);
+      chrome.tabs.onUpdated.addListener(updatedListener);
     });
   }
 });
