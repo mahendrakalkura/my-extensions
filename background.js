@@ -10,12 +10,6 @@ chrome.runtime.onInstalled.addListener(() => {
     title: "Expand all content",
   });
   chrome.contextMenus.create({
-    contexts: ["link"],
-    id: "open-in-invidious",
-    targetUrlPatterns: ["*://*.youtube.com/shorts/*", "*://*.youtube.com/watch*", "*://youtu.be/*"],
-    title: "Open in Invidious",
-  });
-  chrome.contextMenus.create({
     contexts: ["page"],
     id: "summarize-claude",
     title: "Summarize with Claude",
@@ -64,21 +58,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     activateScreenshot(tab.id);
   } else if (info.menuItemId === "auto-expand") {
     chrome.scripting.executeScript({ files: ["auto-expand.js"], target: { tabId: tab.id } });
-  } else if (info.menuItemId === "open-in-invidious") {
-    const url = new URL(info.linkUrl);
-    let videoId = "";
-    if (url.hostname === "youtu.be") {
-      videoId = url.pathname.split("/")[1];
-    } else if (url.pathname.startsWith("/shorts/")) {
-      videoId = url.pathname.split("/")[2];
-    } else {
-      videoId = url.searchParams.get("v");
-    }
-    if (videoId) {
-      const instances = ["inv.nadeko.net", "invidious.f5.si", "invidious.nerdvpn.de", "yt.chocolatemoo53.com"];
-      const instance = instances[Math.floor(Math.random() * instances.length)];
-      chrome.tabs.create({ url: `https://${instance}/watch?v=${videoId}` });
-    }
   } else if (info.menuItemId.startsWith("summarize-")) {
     const service = info.menuItemId.replace("summarize-", "");
     chrome.scripting
@@ -94,20 +73,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       });
   }
 });
-
-// Browsers collapse multiple matching menu items into a "My Extensions"
-// submenu. On YouTube video/shorts links, hide "Take screenshot" so "Open in
-// Invidious" is the sole match and gets the top-level slot; restore it on
-// every other right-click. onShown is Firefox-only; on Chromium the same
-// hiding is driven by invidious.js via setScreenshotMenuVisible messages.
-if (chrome.contextMenus.onShown) {
-  chrome.contextMenus.onShown.addListener((info) => {
-    const visible = !info.menuIds.includes("open-in-invidious");
-    chrome.contextMenus.update("screenshot-element", { visible }, () => {
-      chrome.contextMenus.refresh();
-    });
-  });
-}
 
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.action === "captureTab") {
@@ -164,7 +129,5 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       chrome.tabs.onRemoved.addListener(removedListener);
       chrome.tabs.onUpdated.addListener(updatedListener);
     });
-  } else if (request.action === "setScreenshotMenuVisible") {
-    chrome.contextMenus.update("screenshot-element", { visible: request.visible });
   }
 });

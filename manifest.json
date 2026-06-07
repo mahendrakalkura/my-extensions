@@ -25,11 +25,6 @@
       "css": ["imdb.css"],
       "matches": ["*://*.imdb.com/*"],
       "run_at": "document_start"
-    },
-    {
-      "js": ["invidious.js"],
-      "matches": ["<all_urls>"],
-      "run_at": "document_start"
     }
   ],
   "description": "Screenshot any element, expand content, and summarize pages with AI services",
