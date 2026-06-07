@@ -95,6 +95,20 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 });
 
+// Firefox collapses multiple matching menu items into a "My Extensions"
+// submenu. On YouTube video/shorts links, hide "Take screenshot" so "Open in
+// Invidious" is the sole match and gets the top-level slot; restore it on
+// every other right-click. onShown is Firefox-only, so Chrome keeps the
+// submenu behavior.
+if (chrome.contextMenus.onShown) {
+  chrome.contextMenus.onShown.addListener((info) => {
+    const visible = !info.menuIds.includes("open-in-invidious");
+    chrome.contextMenus.update("screenshot-element", { visible }, () => {
+      chrome.contextMenus.refresh();
+    });
+  });
+}
+
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.action === "captureTab") {
     chrome.tabs.captureVisibleTab(null, { format: "png" }, (dataUrl) => {
