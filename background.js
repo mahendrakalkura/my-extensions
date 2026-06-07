@@ -75,7 +75,9 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       videoId = url.searchParams.get("v");
     }
     if (videoId) {
-      chrome.tabs.create({ url: `https://redirect.invidious.io/watch?v=${videoId}` });
+      const instances = ["inv.nadeko.net", "invidious.f5.si", "invidious.nerdvpn.de", "yt.chocolatemoo53.com"];
+      const instance = instances[Math.floor(Math.random() * instances.length)];
+      chrome.tabs.create({ url: `https://${instance}/watch?v=${videoId}` });
     }
   } else if (info.menuItemId.startsWith("summarize-")) {
     const service = info.menuItemId.replace("summarize-", "");
