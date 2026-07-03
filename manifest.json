@@ -25,6 +25,11 @@
       "css": ["imdb.css"],
       "matches": ["*://*.imdb.com/*"],
       "run_at": "document_start"
+    },
+    {
+      "js": ["email-cleanup.js"],
+      "matches": ["*://mail.google.com/*"],
+      "run_at": "document_idle"
     }
   ],
   "description": "Screenshot any element, expand content, and summarize pages with AI services",
@@ -36,7 +41,8 @@
     "*://*.qwen.ai/*",
     "*://chat.z.ai/*",
     "*://chatgpt.com/*",
-    "*://gemini.google.com/*"
+    "*://gemini.google.com/*",
+    "*://mail.google.com/*"
   ],
   "manifest_version": 3,
   "name": "My Extensions",

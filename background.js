@@ -1,3 +1,23 @@
+// Read from chrome.storage.local on startup. If missing, logs a one-time
+// message with the setter command.  chrome.storage.local persists across
+// browser restarts — you set the key once and it stays forever.
+let OPENROUTER_KEY = "";
+
+chrome.storage.local.get("openrouterKey", (result) => {
+  if (result.openrouterKey) {
+    OPENROUTER_KEY = result.openrouterKey;
+  } else {
+    console.warn(
+      "OpenRouter key not set. Run this in the extension service worker console:\n\n" +
+      '  chrome.storage.local.set({openrouterKey: "sk-or-v1-..."})\n'
+    );
+  }
+});
+
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.openrouterKey) OPENROUTER_KEY = changes.openrouterKey.newValue;
+});
+
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     contexts: ["all"],
@@ -74,7 +94,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 });
 
-chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "captureTab") {
     chrome.tabs.captureVisibleTab(null, { format: "png" }, (dataUrl) => {
       if (chrome.runtime.lastError) {
@@ -98,26 +118,15 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     const url = urls[request.service] || urls.claude;
 
     chrome.tabs.create({ url }, (tab) => {
-      // Inject the handler on every load completion, not just the first: on a
-      // cold visit these SPAs can redirect or reload after the first
-      // "complete", which destroys the injected script. The handler guards
-      // against duplicate runs and exits when storage is empty.
       const updatedListener = (tabId, changeInfo) => {
         if (tabId === tab.id && changeInfo.status === "complete") {
-          chrome.scripting
-            .executeScript({
-              args: [request.service],
-              func: (service) => {
-                window.__aiService = service;
-              },
-              target: { tabId: tab.id },
-            })
-            .then(() => {
-              chrome.scripting.executeScript({
-                files: ["ai-handler.js"],
-                target: { tabId: tab.id },
-              });
-            });
+          chrome.scripting.executeScript({
+            args: [request.service],
+            func: (service) => { window.__aiService = service; },
+            target: { tabId: tab.id },
+          }).then(() => {
+            chrome.scripting.executeScript({ files: ["ai-handler.js"], target: { tabId: tab.id } });
+          });
         }
       };
       const removedListener = (tabId) => {
@@ -129,5 +138,33 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       chrome.tabs.onRemoved.addListener(removedListener);
       chrome.tabs.onUpdated.addListener(updatedListener);
     });
+  } else if (request.action === "cleanDraft") {
+    if (!OPENROUTER_KEY) {
+      console.warn("OpenRouter key not set. Run: chrome.storage.local.set({openrouterKey: \"sk-or-v1-...\"})");
+      return;
+    }
+    const draft = request.draft;
+    const tabId = sender.tab ? sender.tab.id : null;
+    if (tabId) chrome.tabs.sendMessage(tabId, { action: "showProgress" });
+    fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENROUTER_KEY}` },
+      body: JSON.stringify({ model: "openai/gpt-oss-120b", messages: [
+        { role: "system", content: "Rewrite the following email draft as polished Markdown. Output ONLY the rewritten email — do NOT wrap your response in a code fence (```). Do not add explanations, greetings, or sign-offs." },
+        { role: "user", content: draft }
+      ] })
+    })
+      .then(res => res.json())
+      .then(data => {
+        const markdown = data?.choices?.[0]?.message?.content;
+        if (markdown && tabId) {
+          chrome.tabs.sendMessage(tabId, { action: "draftCleaned", markdown });
+        } else if (tabId) {
+          chrome.tabs.sendMessage(tabId, { action: "draftError" });
+        }
+      })
+      .catch(() => { if (tabId) chrome.tabs.sendMessage(tabId, { action: "draftError" }); })
+      .finally(() => { if (tabId) chrome.tabs.sendMessage(tabId, { action: "hideProgress" }); });
+    return true;
   }
 });

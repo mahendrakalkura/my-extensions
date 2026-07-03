@@ -74,9 +74,8 @@
       'button[type="submit"]'
     ],
     deepseek: [
-      'button[class*="send"]',
-      'button svg[class*="icon"]',
-      'button:has(svg)'
+      'div[role="button"][class*="ds-button--primary"]:not([class*="--disabled"])',
+      'div[role="button"]:has(svg):not([class*="--disabled"])'
     ],
     gemini: [
       'button[aria-label*="Send"]',
@@ -269,7 +268,7 @@
 
     // Wait for a real send button to enable before allowing the loosest
     // selectors, which can match unrelated icon buttons.
-    let submitButton = await pollFor(() => findSubmitButton(inputField, btnSelectors, false), 5000);
+    let submitButton = await pollFor(() => findSubmitButton(inputField, btnSelectors, false), 1000, 50);
     if (!submitButton) {
       console.log('[ai-handler] no strict button match, allowing last resort');
       submitButton = findSubmitButton(inputField, btnSelectors, true);

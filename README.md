@@ -19,6 +19,19 @@ A Chrome extension with useful productivity features.
 - Shows a blue indicator badge when active
 - Intelligently avoids re-clicking already expanded content
 
+### Email Cleanup (Gmail)
+- Opens automatically in Gmail — a "🧹 Clean" button appears in the compose window formatting toolbar
+- Click to rewrite your draft as polished Markdown via OpenRouter (GPT-OSS-120B)
+- Shows a progress overlay while processing; restores original draft on failure
+
+**First-time setup:** You need an OpenRouter API key. Open the extension's service worker console and run:
+
+```
+chrome.storage.local.set({openrouterKey: "sk-or-v1-YOUR-KEY"})
+```
+
+The key persists across browser restarts — you only need to set it once.
+
 ## Installation Instructions (Local/Unpacked)
 
 Since you're not publishing this extension to the Chrome Web Store, you'll install it locally as an "unpacked extension". Here's how:
